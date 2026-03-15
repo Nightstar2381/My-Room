@@ -88,11 +88,13 @@
     </div>
 
     <!-- Desktop Floating User Profile -->
-    <div onclick="toggleDemoRole()" class="hidden md:flex fixed top-6 right-8 z-40 items-center gap-3 bg-white/90 backdrop-blur-xl px-2 pr-4 py-2 rounded-[2rem] shadow-sm border border-pink-100 animate-ios-up cursor-pointer hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-300 smooth-expo group no-print" title="คลิกเพื่อสลับบทบาท (Admin ↔ User)">
-        <img id="profile-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover">
-        <div class="text-right">
-            <p id="profile-username" class="text-sm font-extrabold text-stone-700 leading-none group-hover:text-pink-500 transition-colors"></p>
-            <p id="profile-role" class="text-[10px] font-bold uppercase mt-0.5"></p>
+    <div class="hidden md:flex fixed top-6 right-8 z-40 items-center gap-3 bg-white/90 backdrop-blur-xl px-2 pr-4 py-2 rounded-[2rem] shadow-sm border border-pink-100 animate-ios-up no-print">
+        <div onclick="toggleDemoRole()" class="flex items-center gap-3 cursor-pointer hover:scale-105 active:scale-95 transition-transform duration-300 group" title="คลิกเพื่อสลับบทบาท (Admin ↔ User)">
+            <img id="profile-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover">
+            <div class="text-right">
+                <p id="profile-username" class="text-sm font-extrabold text-stone-700 leading-none group-hover:text-pink-500 transition-colors"></p>
+                <p id="profile-role" class="text-[10px] font-bold uppercase mt-0.5"></p>
+            </div>
         </div>
         <!-- ปุ่มออกจากระบบ (Logout) -->
         <button onclick="logout(event)" class="ml-2 p-2 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-500 hover:text-white transition-colors duration-300" title="ออกจากระบบ">
@@ -410,10 +412,22 @@
                     ];
                     return;
                 }
-                const res = await fetch(GOOGLE_SCRIPT_URL);
-                const data = await res.json();
-                records = data;
-            } catch (err) { console.error("Fetch Error:", err); }
+                const fetchUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=getData';
+                const res = await fetch(fetchUrl);
+                const result = await res.json();
+                
+                if (result && result.status === 'success' && Array.isArray(result.data)) {
+                    records = result.data;
+                } else if (Array.isArray(result)) {
+                    records = result;
+                } else {
+                    records = [];
+                    console.warn("Invalid data format received from API", result);
+                }
+            } catch (err) { 
+                console.error("Fetch Error:", err); 
+                records = [];
+            }
         }
 
         async function saveRecordToSheet(record) {
@@ -848,7 +862,7 @@
         function getScannerHTML() {
             const units = (Number(formState.elecCurr)||0) - (Number(formState.elecPrev)||0);
             const elecTot = units > 0 ? units * formState.elecRate : 0;
-            const waterTot = Number(formState.waterTotal) || 0; // ยืดหยุ่นค่าน้ำ
+            const waterTot = Number(formState.waterTotal) || 0; 
             const grandTot = elecTot + waterTot;
 
             let years = [];
@@ -1266,7 +1280,7 @@
                 document.getElementById('loader').style.display = 'flex';
                 await deleteRecordFromSheet(id);
                 document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
-                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 500);
                 renderApp();
             }
         }
