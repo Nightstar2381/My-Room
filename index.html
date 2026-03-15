@@ -285,6 +285,10 @@
         let currentZoom = 1;
         let activeDropdown = null; 
         let currentCaptchaAnswer = 0;
+
+        let snMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+        let snYear = String(new Date().getFullYear() + 543);
+        
         let scheduleDay = '1';
         let scheduleHour = '8';
         let newUserRole = 'user';
@@ -539,7 +543,7 @@
             const currentYearRecords = records.filter(r => String(r.year) === String(filterYear)).sort((a,b) => a.month - b.month);
             const prevYearRecords = records.filter(r => String(r.year) === String(Number(filterYear) - 1)).sort((a,b) => a.month - b.month);
             
-            const dashRecs = currentYearRecords.filter(r => filterMonth === 'all' || r.month === filterMonth);
+            const dashRecs = currentYearRecords.filter(r => filterMonth === 'all' || String(r.month).padStart(2, '0') === String(filterMonth).padStart(2, '0'));
             
             const totalAmount = dashRecs.reduce((sum, r) => sum + Number(r.total), 0);
             const totalUnits = dashRecs.reduce((sum, r) => sum + Number(r.elecUnits), 0);
@@ -552,9 +556,9 @@
             let pctChangeAmt = 0, pctChangeUn = 0;
             const targetM = filterMonth !== 'all' ? filterMonth : (currentYearRecords.length > 0 ? currentYearRecords[currentYearRecords.length - 1].month : null);
             if (targetM) {
-                const curr = records.find(r => String(r.year) === String(filterYear) && r.month === targetM);
+                const curr = records.find(r => String(r.year) === String(filterYear) && String(r.month).padStart(2, '0') === String(targetM).padStart(2, '0'));
                 const prevM = String(Number(targetM) - 1).padStart(2, '0');
-                const prev = records.find(r => String(r.year) === String(filterYear) && r.month === prevM);
+                const prev = records.find(r => String(r.year) === String(filterYear) && String(r.month).padStart(2, '0') === prevM);
                 if (curr && prev && prev.total > 0) {
                     pctChangeAmt = ((Number(curr.total) - Number(prev.total)) / Number(prev.total)) * 100;
                     pctChangeUn = ((Number(curr.elecUnits) - Number(prev.elecUnits)) / Number(prev.elecUnits)) * 100;
@@ -562,8 +566,8 @@
             }
 
             const chartData = THAI_MONTHS.map(m => {
-                const r = currentYearRecords.find(x => x.month === m.val);
-                const pr = prevYearRecords.find(x => x.month === m.val);
+                const r = currentYearRecords.find(x => String(x.month).padStart(2, '0') === m.val);
+                const pr = prevYearRecords.find(x => String(x.month).padStart(2, '0') === m.val);
                 return { 
                     month: m.short, fullMonth: m.label, val: m.val, 
                     units: r ? Number(r.elecUnits) : 0, 
@@ -1172,7 +1176,7 @@
             let prevM = Number(formState.month) - 1; let prevY = Number(formState.year);
             if(prevM === 0) { prevM = 12; prevY -= 1; }
             const prevMStr = String(prevM).padStart(2, '0');
-            const prevRec = records.find(r => r.month === prevMStr && r.year === String(prevY));
+            const prevRec = records.find(r => String(r.month).padStart(2, '0') === prevMStr && String(r.year) === String(prevY));
             const prevInput = document.getElementById('f-prev');
             const hint = document.getElementById('auto-fill-hint');
             
@@ -1230,7 +1234,7 @@
         function getDataViewHTML() {
             let fRecs = records.filter(r => {
                 let matchY = qYear === 'all' || String(r.year) === String(qYear);
-                let matchM = qMonth === 'all' || r.month === qMonth;
+                let matchM = qMonth === 'all' || String(r.month).padStart(2, '0') === String(qMonth).padStart(2, '0');
                 let matchMin = qMinTotal === '' || Number(r.total) >= Number(qMinTotal);
                 let matchMax = qMaxTotal === '' || Number(r.total) <= Number(qMaxTotal);
                 return matchY && matchM && matchMin && matchMax;
@@ -1257,7 +1261,7 @@
             let tbody = '';
             if (fRecs.length === 0) { tbody = `<tr><td colspan="${currentUser.role==='admin'?'7':'6'}" class="p-16 text-center animate-ios-up" style="animation-delay: 0.2s"><div class="flex flex-col items-center text-stone-300"><i data-lucide="search-x" width="48" height="48" class="mb-4 text-pink-200"></i><p class="font-extrabold text-lg text-stone-400">ไม่พบข้อมูลที่คุณค้นหาเลย 🥺</p><p class="text-sm mt-1 font-medium">ลองเปลี่ยนเงื่อนไขการกรองดูนะ</p></div></td></tr>`; } 
             else {
-                tbody = fRecs.map((r, i) => `<tr class="hover:bg-pink-50/50 transition-colors duration-300 group animate-ios-up" style="animation-delay: ${(i*0.05)+0.15}s"><td class="p-5"><div class="font-extrabold text-stone-700">${THAI_MONTHS.find(m=>m.val==r.month)?.label || r.month} ${r.year}</div><div class="text-[10px] text-stone-400 font-bold uppercase">บันทึก: ${r.date}</div></td><td class="p-5 text-right font-bold text-stone-500">${r.elecPrev} <span class="text-pink-300 mx-1">→</span> ${r.elecCurr}</td><td class="p-5 text-center"><span class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-xl text-xs font-black">${r.elecUnits}</span></td><td class="p-5 text-right font-bold text-stone-500">${Number(r.elecTotal).toLocaleString()}</td><td class="p-5 text-right font-bold text-stone-500">${Number(r.waterTotal).toLocaleString()}</td><td class="p-5 text-right font-black text-pink-500 text-lg">฿${Number(r.total).toLocaleString()}</td>${currentUser.role === 'admin' ? `<td class="p-5 text-right whitespace-nowrap"><button onclick="openEditModal('${r.id}')" class="text-stone-300 hover:text-sky-500 hover:bg-sky-50 active:scale-90 transition-all duration-300 smooth-expo p-2 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md mr-1" title="แก้ไขข้อมูล"><i data-lucide="pencil" width="16"></i></button><button onclick="confirmDelete('${r.id}')" class="text-stone-300 hover:text-red-400 hover:bg-red-50 active:scale-90 transition-all duration-300 smooth-expo p-2 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md" title="ลบข้อมูล"><i data-lucide="trash-2" width="16"></i></button></td>` : ''}</tr>`).join('');
+                tbody = fRecs.map((r, i) => `<tr class="hover:bg-pink-50/50 transition-colors duration-300 group animate-ios-up" style="animation-delay: ${(i*0.05)+0.15}s"><td class="p-5"><div class="font-extrabold text-stone-700">${THAI_MONTHS.find(m=>m.val==String(r.month).padStart(2, '0'))?.label || r.month} ${r.year}</div><div class="text-[10px] text-stone-400 font-bold uppercase">บันทึก: ${r.date}</div></td><td class="p-5 text-right font-bold text-stone-500">${r.elecPrev} <span class="text-pink-300 mx-1">→</span> ${r.elecCurr}</td><td class="p-5 text-center"><span class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-xl text-xs font-black">${r.elecUnits}</span></td><td class="p-5 text-right font-bold text-stone-500">${Number(r.elecTotal).toLocaleString()}</td><td class="p-5 text-right font-bold text-stone-500">${Number(r.waterTotal).toLocaleString()}</td><td class="p-5 text-right font-black text-pink-500 text-lg">฿${Number(r.total).toLocaleString()}</td>${currentUser.role === 'admin' ? `<td class="p-5 text-right whitespace-nowrap"><button onclick="openEditModal('${r.id}')" class="text-stone-300 hover:text-sky-500 hover:bg-sky-50 active:scale-90 transition-all duration-300 smooth-expo p-2 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md mr-1" title="แก้ไขข้อมูล"><i data-lucide="pencil" width="16"></i></button><button onclick="confirmDelete('${r.id}')" class="text-stone-300 hover:text-red-400 hover:bg-red-50 active:scale-90 transition-all duration-300 smooth-expo p-2 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md" title="ลบข้อมูล"><i data-lucide="trash-2" width="16"></i></button></td>` : ''}</tr>`).join('');
             }
             const actionTh = currentUser.role === 'admin' ? `<th class="p-5 rounded-tr-2xl text-center">จัดการ</th>` : `<th class="p-5 rounded-tr-2xl"></th>`;
 
@@ -1288,12 +1292,12 @@
             
             if (repPeriod === 'all') { periodText = `ทั้งหมดของปี พ.ศ. ${repYear}`; } 
             else if (repPeriod === 'specific') {
-                filtered = filtered.filter(r => r.month === repMonth);
+                filtered = filtered.filter(r => String(r.month).padStart(2, '0') === String(repMonth).padStart(2, '0'));
                 const mName = THAI_MONTHS.find(m => m.val === repMonth)?.label;
                 periodText = `ประจำเดือน ${mName} พ.ศ. ${repYear}`;
             } else if (repPeriod === 'latest3') {
-                const uniqueMonths = [...new Set(filtered.map(r => r.month))].sort().reverse().slice(0, 3);
-                filtered = filtered.filter(r => uniqueMonths.includes(r.month));
+                const uniqueMonths = [...new Set(filtered.map(r => String(r.month).padStart(2, '0')))].sort().reverse().slice(0, 3);
+                filtered = filtered.filter(r => uniqueMonths.includes(String(r.month).padStart(2, '0')));
                 periodText = `3 เดือนล่าสุดที่มีข้อมูล (ปี พ.ศ. ${repYear})`;
             }
 
@@ -1313,7 +1317,7 @@
             if (filtered.length === 0) {
                 tbody = `<tr><td colspan="4" class="p-8 text-center text-stone-300 font-bold">ไม่มีข้อมูลในช่างเวลานี้</td></tr>`;
             } else {
-                tbody = filtered.map(r => `<tr class="border-b border-stone-100 last:border-0 text-sm"><td class="p-3 font-bold text-stone-600">${THAI_MONTHS.find(m=>m.val==r.month)?.label} ${r.year}</td><td class="p-3 text-right font-bold text-teal-500">${r.elecUnits}</td><td class="p-3 text-right font-bold text-stone-500">฿${Number(r.elecTotal).toLocaleString()}</td><td class="p-3 text-right font-black text-pink-500">฿${Number(r.total).toLocaleString()}</td></tr>`).join('');
+                tbody = filtered.map(r => `<tr class="border-b border-stone-100 last:border-0 text-sm"><td class="p-3 font-bold text-stone-600">${THAI_MONTHS.find(m=>m.val==String(r.month).padStart(2, '0'))?.label} ${r.year}</td><td class="p-3 text-right font-bold text-teal-500">${r.elecUnits}</td><td class="p-3 text-right font-bold text-stone-500">฿${Number(r.elecTotal).toLocaleString()}</td><td class="p-3 text-right font-black text-pink-500">฿${Number(r.total).toLocaleString()}</td></tr>`).join('');
             }
 
             return `<div class="space-y-8 pb-8 pt-14 md:pt-0"><header class="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-ios-up no-print"><div><h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">รายงาน & ส่งออก 📊</h2><p class="text-stone-500 mt-1 font-medium">สรุปข้อมูลเพื่อดูบนเว็บ พิมพ์ ดาวน์โหลด หรือส่งอีเมล</p></div><div class="flex gap-3"><button onclick="exportReportCSV()" class="bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-xl font-bold border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-2"><i data-lucide="download" width="18"></i> CSV</button><button onclick="handlePrint()" class="bg-stone-800 text-white px-5 py-2.5 rounded-xl font-bold border border-stone-900 hover:bg-stone-900 active:scale-95 transition-all flex items-center gap-2"><i data-lucide="printer" width="18"></i> พิมพ์ / PDF</button></div></header><div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-pink-50 flex flex-col xl:flex-row gap-5 xl:items-center animate-ios-up relative z-50 no-print" style="animation-delay: 0.05s"><div class="flex items-center gap-2 text-pink-500 font-extrabold whitespace-nowrap bg-pink-50 px-5 py-3 rounded-2xl w-fit shadow-sm"><i data-lucide="filter" width="18"></i> ช่วงเวลา</div><div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4"><div class="relative z-[60]">${createDropdownHTML('rep-year', yOpts, repYear, 'updateReportSlicerYear', 'pink')}</div><div class="relative z-[50]">${createDropdownHTML('rep-period', periodOpts, repPeriod, 'updateReportSlicerPeriod', 'teal')}</div><div class="relative z-[40] ${repPeriod !== 'specific' ? 'opacity-50 pointer-events-none' : ''}">${createDropdownHTML('rep-month', mOpts, repMonth, 'updateReportSlicerMonth', 'sky')}</div></div></div><div id="report-print-area" class="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 p-8 md:p-12 animate-ios-up relative z-10 mx-auto max-w-4xl" style="animation-delay: 0.1s"><div class="text-center mb-10 print-break-before"><div class="inline-flex items-center justify-center p-4 bg-pink-50 rounded-full mb-4"><i data-lucide="sparkles" class="text-pink-400" width="32" height="32"></i></div><h1 class="text-3xl font-black text-stone-800 tracking-tight">สรุปรายงานค่าใช้จ่าย 🌸</h1><p class="text-stone-500 font-bold mt-2">${periodText}</p></div><div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"><div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100"><p class="text-[10px] text-stone-400 font-bold uppercase mb-1">จำนวนบิล</p><p class="text-2xl font-black text-stone-700">${filtered.length}</p></div><div class="bg-teal-50 rounded-2xl p-4 text-center border border-teal-100/50"><p class="text-[10px] text-teal-600 font-bold uppercase mb-1">หน่วยไฟรวม</p><p class="text-2xl font-black text-teal-700">${rTotalUnits.toLocaleString()}</p></div><div class="bg-sky-50 rounded-2xl p-4 text-center border border-sky-100/50"><p class="text-[10px] text-sky-600 font-bold uppercase mb-1">ค่าน้ำรวม</p><p class="text-2xl font-black text-sky-700">฿${rTotalWater.toLocaleString()}</p></div><div class="bg-pink-50 rounded-2xl p-4 text-center border border-pink-100/50 shadow-sm"><p class="text-[10px] text-pink-500 font-bold uppercase mb-1">ยอดชำระสุทธิ</p><p class="text-2xl font-black text-pink-600">฿${rTotalAmt.toLocaleString()}</p></div></div><div class="overflow-hidden rounded-2xl border border-stone-100"><table class="w-full text-left border-collapse"><thead><tr class="bg-stone-50 text-stone-400 text-[11px] uppercase tracking-wider font-extrabold border-b border-stone-100"><th class="p-4">รอบบิล</th><th class="p-4 text-right">หน่วยไฟ</th><th class="p-4 text-right">ค่าไฟ</th><th class="p-4 text-right text-pink-400">ยอดรวม (รวมน้ำ)</th></tr></thead><tbody>${tbody}</tbody></table></div><div class="mt-12 text-center text-xs font-bold text-stone-300"><p>พิมพ์จากระบบ MyRoom Utility Manager</p><p>วันที่พิมพ์: ${new Date().toLocaleDateString('th-TH')}</p></div></div><div class="bg-gradient-to-r from-sky-50 to-white p-6 rounded-[2.5rem] shadow-sm border border-sky-100 flex flex-col md:flex-row justify-between items-center gap-4 animate-ios-up relative z-10 no-print" style="animation-delay: 0.2s"><div class="flex items-center gap-4"><div class="bg-white p-3 rounded-2xl text-sky-500 shadow-sm"><i data-lucide="mail" width="24"></i></div><div><h3 class="text-lg font-extrabold text-stone-800">ส่งอีเมลอัตโนมัติ 💌</h3><p class="text-xs font-bold text-sky-600">รับรายงานสรุปยอดทุกสิ้นเดือนส่งตรงถึงอีเมล</p></div></div><button onclick="openEmailSetupModal()" class="w-full md:w-auto bg-sky-500 text-white px-6 py-3 rounded-2xl font-extrabold shadow-lg shadow-sky-200 hover:bg-sky-600 active:scale-95 transition-all">จัดการส่งอีเมล</button></div></div>`;
@@ -1321,18 +1325,20 @@
 
         function exportReportCSV() {
             let filtered = [...records].filter(r => String(r.year) === String(repYear));
-            if (repPeriod === 'specific') filtered = filtered.filter(r => r.month === repMonth);
-            else if (repPeriod === 'latest3') { const uniqueMonths = [...new Set(filtered.map(r => r.month))].sort().reverse().slice(0, 3); filtered = filtered.filter(r => uniqueMonths.includes(r.month)); }
+            if (repPeriod === 'specific') filtered = filtered.filter(r => String(r.month).padStart(2, '0') === String(repMonth).padStart(2, '0'));
+            else if (repPeriod === 'latest3') { const uniqueMonths = [...new Set(filtered.map(r => String(r.month).padStart(2, '0')))].sort().reverse().slice(0, 3); filtered = filtered.filter(r => uniqueMonths.includes(String(r.month).padStart(2, '0'))); }
             filtered.sort((a, b) => b.month - a.month);
             if(filtered.length === 0) return alert('ไม่มีข้อมูลสำหรับ Export ค่ะ 🥺');
             const headers = ['เดือน', 'ปี', 'จดก่อน', 'จดหลัง', 'หน่วยไฟ', 'เรท', 'รวมค่าไฟ', 'ค่าน้ำ', 'ยอดสุทธิ', 'วันที่บันทึก'];
-            const rows = filtered.map(r => [THAI_MONTHS.find(m => m.val === r.month)?.label || r.month, r.year, r.elecPrev, r.elecCurr, r.elecUnits, r.elecRate, r.elecTotal, r.waterTotal, r.total, r.date]);
+            const rows = filtered.map(r => [THAI_MONTHS.find(m => m.val === String(r.month).padStart(2, '0'))?.label || r.month, r.year, r.elecPrev, r.elecCurr, r.elecUnits, r.elecRate, r.elecTotal, r.waterTotal, r.total, r.date]);
             const csvContent = "\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
             const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
             const link = document.createElement("a"); link.setAttribute("href", url); link.setAttribute("download", `MyRoom_Report_${repYear}.csv`); document.body.appendChild(link); link.click(); document.body.removeChild(link);
         }
 
+        function updateSnMonth(val, label) { snMonth = val; document.getElementById('dd-label-sn-month').innerText = label; }
+        function updateSnYear(val, label) { snYear = val; document.getElementById('dd-label-sn-year').innerText = label; }
         function updateScheduleDay(val, label) { scheduleDay = val; document.getElementById('dd-label-sch-day').innerText = label; }
         function updateScheduleHour(val, label) { scheduleHour = val; document.getElementById('dd-label-sch-hour').innerText = label; }
 
@@ -1350,7 +1356,7 @@
             for(let i=0; i<=23; i++) hoursOpts.push({ value: i.toString(), label: `เวลา ${String(i).padStart(2,'0')}:00 น.` });
 
             if(content) {
-                content.innerHTML = `<div class="flex flex-col w-full max-w-lg mx-auto pb-4"><div class="mx-auto bg-sky-100 p-4 rounded-full text-sky-500 mb-4 animate-ios-pop"><i data-lucide="mail" width="32" height="32"></i></div><h2 class="text-2xl font-black text-stone-800 mb-2 text-center">จัดการส่งอีเมลรายงาน 💌</h2><p class="text-stone-500 font-medium mb-8 text-center text-sm">ส่งรายงานทันที หรือตั้งเวลาให้ระบบส่งอัตโนมัติทุกเดือน</p><div class="space-y-2 mb-8 relative z-[70]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">อีเมลผู้รับรายงาน (บันทึกเข้าระบบหลัก)</label><div class="flex gap-2"><input type="email" id="setup-email" value="${savedEmail}" placeholder="example@mail.com" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 border border-transparent focus:border-sky-200"><button onclick="saveEmailSetup()" class="bg-stone-800 text-white px-6 rounded-2xl font-bold hover:bg-stone-900 active:scale-95 transition-all whitespace-nowrap">บันทึก</button></div></div><div class="bg-pink-50/50 p-6 rounded-3xl border border-pink-100 mb-6 relative z-[60]"><h3 class="font-extrabold text-pink-500 mb-4 flex items-center gap-2"><i data-lucide="send" width="18"></i> 1. ส่งรายงานเดี๋ยวนี้ (Send Now)</h3><div class="grid grid-cols-2 gap-3 mb-4"><div class="relative z-[65]">${createDropdownHTML('sn-month', reportMonthOpts, repMonth, '', 'pink')}</div><div class="relative z-[60]">${createDropdownHTML('sn-year', reportYearOpts, repYear, '', 'pink')}</div></div><button onclick="sendEmailNow()" id="btn-send-now" class="w-full bg-pink-400 text-white py-3.5 rounded-xl font-bold shadow-sm hover:bg-pink-500 active:scale-95 transition-all flex items-center justify-center gap-2">ส่งเข้าอีเมลทันที 🚀</button></div><div class="bg-teal-50/50 p-6 rounded-3xl border border-teal-100 relative z-[50]"><h3 class="font-extrabold text-teal-600 mb-4 flex items-center gap-2"><i data-lucide="clock" width="18"></i> 2. ตั้งเวลาส่งอัตโนมัติ (Schedule)</h3><p class="text-xs text-stone-500 font-medium mb-3">ระบบจะส่งสรุปของ "เดือนล่าสุด" ให้ตามรอบที่ตั้งไว้</p><div class="grid grid-cols-2 gap-3 mb-4"><div class="relative z-[55]">${createDropdownHTML('sch-day', daysOpts, scheduleDay, 'updateScheduleDay', 'teal')}</div><div class="relative z-[50]">${createDropdownHTML('sch-hour', hoursOpts, scheduleHour, 'updateScheduleHour', 'teal')}</div></div><button onclick="saveSchedule()" id="btn-schedule" class="w-full bg-teal-500 text-white py-3.5 rounded-xl font-bold shadow-sm hover:bg-teal-600 active:scale-95 transition-all flex items-center justify-center gap-2">บันทึกเวลาส่งอัตโนมัติ ⏰</button></div></div>`;
+                content.innerHTML = `<div class="flex flex-col w-full max-w-lg mx-auto pb-4"><div class="mx-auto bg-sky-100 p-4 rounded-full text-sky-500 mb-4 animate-ios-pop"><i data-lucide="mail" width="32" height="32"></i></div><h2 class="text-2xl font-black text-stone-800 mb-2 text-center">จัดการส่งอีเมลรายงาน 💌</h2><p class="text-stone-500 font-medium mb-8 text-center text-sm">ส่งรายงานทันที หรือตั้งเวลาให้ระบบส่งอัตโนมัติทุกเดือน</p><div class="space-y-2 mb-8 relative z-[70]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">อีเมลผู้รับรายงาน (บันทึกเข้าระบบหลัก)</label><div class="flex gap-2"><input type="email" id="setup-email" value="${savedEmail}" placeholder="example@mail.com" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 border border-transparent focus:border-sky-200"><button onclick="saveEmailSetup()" class="bg-stone-800 text-white px-6 rounded-2xl font-bold hover:bg-stone-900 active:scale-95 transition-all whitespace-nowrap">บันทึก</button></div></div><div class="bg-pink-50/50 p-6 rounded-3xl border border-pink-100 mb-6 relative z-[60]"><h3 class="font-extrabold text-pink-500 mb-4 flex items-center gap-2"><i data-lucide="send" width="18"></i> 1. ส่งรายงานเดี๋ยวนี้ (Send Now)</h3><div class="grid grid-cols-2 gap-3 mb-4"><div class="relative z-[65]">${createDropdownHTML('sn-month', reportMonthOpts, snMonth, 'updateSnMonth', 'pink')}</div><div class="relative z-[60]">${createDropdownHTML('sn-year', reportYearOpts, snYear, 'updateSnYear', 'pink')}</div></div><button onclick="sendEmailNow()" id="btn-send-now" class="w-full bg-pink-400 text-white py-3.5 rounded-xl font-bold shadow-sm hover:bg-pink-500 active:scale-95 transition-all flex items-center justify-center gap-2">ส่งเข้าอีเมลทันที 🚀</button></div><div class="bg-teal-50/50 p-6 rounded-3xl border border-teal-100 relative z-[50]"><h3 class="font-extrabold text-teal-600 mb-4 flex items-center gap-2"><i data-lucide="clock" width="18"></i> 2. ตั้งเวลาส่งอัตโนมัติ (Schedule)</h3><p class="text-xs text-stone-500 font-medium mb-3">ระบบจะส่งสรุปของ "เดือนล่าสุด" ให้ตามรอบที่ตั้งไว้</p><div class="grid grid-cols-2 gap-3 mb-4"><div class="relative z-[55]">${createDropdownHTML('sch-day', daysOpts, scheduleDay, 'updateScheduleDay', 'teal')}</div><div class="relative z-[50]">${createDropdownHTML('sch-hour', hoursOpts, scheduleHour, 'updateScheduleHour', 'teal')}</div></div><button onclick="saveSchedule()" id="btn-schedule" class="w-full bg-teal-500 text-white py-3.5 rounded-xl font-bold shadow-sm hover:bg-teal-600 active:scale-95 transition-all flex items-center justify-center gap-2">บันทึกเวลาส่งอัตโนมัติ ⏰</button></div></div>`;
                 lucide.createIcons();
             }
         }
@@ -1372,20 +1378,17 @@
         async function sendEmailNow() {
             const email = document.getElementById('setup-email').value;
             if(!email) return alert('กรุณาบันทึกอีเมลด้านบนก่อนนะคะ 🥺');
-            const m = document.getElementById('dd-wrapper-sn-month').querySelector('span').innerText;
-            const yText = document.getElementById('dd-wrapper-sn-year').querySelector('span').innerText;
-            const mVal = THAI_MONTHS.find(x => x.label === m)?.val || String(new Date().getMonth() + 1).padStart(2,'0');
-            const yVal = yText.replace(/\D/g,'');
+            
             const btn = document.getElementById('btn-send-now');
             btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" width="18"></i> กำลังส่ง...';
             lucide.createIcons();
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
-                    const payload = { action: 'sendReportNow', email: email, period: 'specific', month: mVal, year: yVal };
+                    const payload = { action: 'sendReportNow', email: email, period: 'specific', month: snMonth, year: snYear };
                     const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
                     const result = await res.json();
                     if(result.status === 'success') alert(result.message); else alert(result.message);
-                } else { alert(`(ระบบจำลอง) ส่งรายงานเดือน ${mVal}/${yVal} ไปที่ ${email} สำเร็จแล้ว 🚀`); }
+                } else { alert(`(ระบบจำลอง) ส่งรายงานเดือน ${snMonth}/${snYear} ไปที่ ${email} สำเร็จแล้ว 🚀`); }
             } catch (err) { alert('ส่งไม่สำเร็จค่ะ 🥺'); }
             btn.innerHTML = 'ส่งเข้าอีเมลทันที 🚀';
         }
@@ -1468,8 +1471,61 @@
             const monthOpts = THAI_MONTHS.map(m => ({ value: m.val, label: m.label }));
 
             if(content) {
-                content.innerHTML = `<div class="flex flex-col w-full max-w-2xl mx-auto pb-4"><h2 class="text-3xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="pencil" class="text-sky-500" width="28" height="28"></i> แก้ไขข้อมูลบิล 📝</h2><p class="text-stone-500 font-medium mb-8">แก้ไขรายละเอียดแล้วกดบันทึกเพื่ออัปเดตข้อมูล</p><form id="edit-form" onsubmit="submitEdit(event, '${id}')" class="space-y-6"><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-50"><div class="flex flex-col gap-1.5 relative z-[60]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ประจำเดือน</label>${createDropdownHTML('edit-month', monthOpts, record.month, 'updateEditMonth', 'sky')}</div><div class="flex flex-col gap-1.5 relative z-[50]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ปี พ.ศ.</label>${createDropdownHTML('edit-year', yearOpts, record.year, 'updateEditYear', 'sky')}</div></div><div class="bg-sky-50 rounded-3xl p-6 border border-sky-100 z-10 relative"><div class="flex justify-between items-center mb-6"><h4 class="font-extrabold text-stone-700 flex items-center gap-2 text-lg"><div class="p-2 bg-sky-50 rounded-xl"><i data-lucide="zap" width="18" class="text-sky-500 fill-sky-500"></i></div> ข้อมูลมิเตอร์ไฟ</h4><div class="flex items-center gap-2 text-xs bg-white px-3 py-1.5 rounded-xl shadow-sm border border-stone-100"><span class="text-stone-500 font-bold">หน่วยละ</span><input type="number" id="e-rate" value="${record.elecRate}" class="w-14 bg-transparent text-center font-black text-sky-500 outline-none border-b-2 border-stone-100 focus:border-sky-400 transition-colors" oninput="updateEditCalc()"><span class="text-stone-500 font-bold">บ.</span></div></div><div class="grid grid-cols-2 gap-4 mb-5"><div><label class="text-xs font-bold text-stone-500 mb-1.5 ml-1 block">จดครั้งก่อน</label><input type="number" id="e-prev" value="${record.elecPrev}" required class="w-full p-4 bg-white rounded-2xl text-stone-700 font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-sky-200 shadow-inner" oninput="updateEditCalc()"></div><div><label class="text-xs font-bold text-stone-500 mb-1.5 ml-1 block">จดครั้งนี้</label><input type="number" id="e-curr" value="${record.elecCurr}" required class="w-full p-4 bg-white rounded-2xl text-stone-700 font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-sky-200 shadow-inner" oninput="updateEditCalc()"></div></div><div class="bg-sky-50/50 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-2 border border-sky-100/50"><div class="text-stone-500 font-bold text-sm">สรุปใช้ไป <span id="e-calc-units" class="text-sky-600 font-black text-xl mx-1">${record.elecUnits}</span> หน่วย</div><div class="text-stone-500 font-bold text-sm flex items-center">ยอดไฟ <span id="e-calc-elec" class="text-sky-500 font-black text-xl ml-2">฿${Number(record.elecTotal).toLocaleString()}</span></div></div></div><div class="bg-gradient-to-r from-teal-50 to-white rounded-[2rem] p-5 border border-teal-100 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><div class="bg-white p-3 rounded-2xl text-teal-400 shadow-sm border border-teal-50"><i data-lucide="droplets" width="22"></i></div><div><h4 class="font-extrabold text-stone-700 text-lg">ค่าน้ำประปา</h4><p class="text-[10px] text-teal-500 font-bold uppercase bg-teal-100/50 px-2 py-0.5 rounded-md inline-block mt-0.5">แก้ไขได้</p></div></div><div class="flex items-center gap-2 text-xs bg-white px-3 py-2 rounded-xl shadow-sm border border-teal-100"><span class="text-stone-500 font-bold">฿</span><input type="number" id="e-water" value="${record.waterTotal}" class="w-16 bg-transparent text-center font-black text-teal-500 outline-none border-b-2 border-stone-100 focus:border-teal-400 transition-colors" oninput="updateEditCalc()"></div></div><div class="flex justify-between items-end bg-pink-50/50 p-5 rounded-[2rem] border border-pink-100 mt-4"><span class="text-stone-500 font-extrabold uppercase tracking-wider text-sm">ยอดสุทธิรวม</span><span id="e-calc-grand" class="text-4xl font-black text-pink-500 tracking-tight transition-all drop-shadow-sm">฿${Number(record.total).toLocaleString()}</span></div><div class="flex flex-col sm:flex-row gap-4 pt-4"><button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 sm:py-5 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button><button type="submit" id="btn-update" class="w-full sm:flex-[2] bg-gradient-to-r from-sky-400 to-sky-500 text-white font-extrabold text-xl py-4 sm:py-5 rounded-full shadow-lg shadow-sky-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2"><i data-lucide="check-circle-2" width="24"></i> <span id="btn-update-text">บันทึกการแก้ไข ✨</span></button></div></form></div>`;
+                content.innerHTML = `<div class="flex flex-col w-full max-w-2xl mx-auto pb-4"><h2 class="text-3xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="pencil" class="text-sky-500" width="28" height="28"></i> แก้ไขข้อมูลบิล 📝</h2><p class="text-stone-500 font-medium mb-8">แก้ไขรายละเอียดแล้วกดบันทึกเพื่ออัปเดตข้อมูล</p><form id="edit-form" onsubmit="submitEdit(event, '${id}')" class="space-y-6"><div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-50"><div class="flex flex-col gap-1.5 relative z-[60]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ประจำเดือน</label>${createDropdownHTML('edit-month', monthOpts, String(record.month).padStart(2, '0'), 'updateEditMonth', 'sky')}</div><div class="flex flex-col gap-1.5 relative z-[50]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ปี พ.ศ.</label>${createDropdownHTML('edit-year', yearOpts, record.year, 'updateEditYear', 'sky')}</div></div><div class="bg-sky-50 rounded-3xl p-6 border border-sky-100 z-10 relative"><div class="flex justify-between items-center mb-6"><h4 class="font-extrabold text-stone-700 flex items-center gap-2 text-lg"><div class="p-2 bg-sky-50 rounded-xl"><i data-lucide="zap" width="18" class="text-sky-500 fill-sky-500"></i></div> ข้อมูลมิเตอร์ไฟ</h4><div class="flex items-center gap-2 text-xs bg-white px-3 py-1.5 rounded-xl shadow-sm border border-stone-100"><span class="text-stone-500 font-bold">หน่วยละ</span><input type="number" id="e-rate" value="${record.elecRate}" class="w-14 bg-transparent text-center font-black text-sky-500 outline-none border-b-2 border-stone-100 focus:border-sky-400 transition-colors" oninput="updateEditCalc()"><span class="text-stone-500 font-bold">บ.</span></div></div><div class="grid grid-cols-2 gap-4 mb-5"><div><label class="text-xs font-bold text-stone-500 mb-1.5 ml-1 block">จดครั้งก่อน</label><input type="number" id="e-prev" value="${record.elecPrev}" required class="w-full p-4 bg-white rounded-2xl text-stone-700 font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-sky-200 shadow-inner" oninput="updateEditCalc()"></div><div><label class="text-xs font-bold text-stone-500 mb-1.5 ml-1 block">จดครั้งนี้</label><input type="number" id="e-curr" value="${record.elecCurr}" required class="w-full p-4 bg-white rounded-2xl text-stone-700 font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-sky-200 shadow-inner" oninput="updateEditCalc()"></div></div><div class="bg-sky-50/50 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-2 border border-sky-100/50"><div class="text-stone-500 font-bold text-sm">สรุปใช้ไป <span id="e-calc-units" class="text-sky-600 font-black text-xl mx-1">${record.elecUnits}</span> หน่วย</div><div class="text-stone-500 font-bold text-sm flex items-center">ยอดไฟ <span id="e-calc-elec" class="text-sky-500 font-black text-xl ml-2">฿${Number(record.elecTotal).toLocaleString()}</span></div></div></div><div class="bg-gradient-to-r from-teal-50 to-white rounded-[2rem] p-5 border border-teal-100 flex justify-between items-center shadow-sm"><div class="flex items-center gap-3"><div class="bg-white p-3 rounded-2xl text-teal-400 shadow-sm border border-teal-50"><i data-lucide="droplets" width="22"></i></div><div><h4 class="font-extrabold text-stone-700 text-lg">ค่าน้ำประปา</h4><p class="text-[10px] text-teal-500 font-bold uppercase bg-teal-100/50 px-2 py-0.5 rounded-md inline-block mt-0.5">แก้ไขได้</p></div></div><div class="flex items-center gap-2 text-xs bg-white px-3 py-2 rounded-xl shadow-sm border border-teal-100"><span class="text-stone-500 font-bold">฿</span><input type="number" id="e-water" value="${record.waterTotal}" class="w-16 bg-transparent text-center font-black text-teal-500 outline-none border-b-2 border-stone-100 focus:border-teal-400 transition-colors" oninput="updateEditCalc()"></div></div><div class="flex justify-between items-end bg-pink-50/50 p-5 rounded-[2rem] border border-pink-100 mt-4"><span class="text-stone-500 font-extrabold uppercase tracking-wider text-sm">ยอดสุทธิรวม</span><span id="e-calc-grand" class="text-4xl font-black text-pink-500 tracking-tight transition-all drop-shadow-sm">฿${Number(record.total).toLocaleString()}</span></div><div class="flex flex-col sm:flex-row gap-4 pt-4"><button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 sm:py-5 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button><button type="submit" id="btn-update" class="w-full sm:flex-[2] bg-gradient-to-r from-sky-400 to-sky-500 text-white font-extrabold text-xl py-4 sm:py-5 rounded-full shadow-lg shadow-sky-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2"><i data-lucide="check-circle-2" width="24"></i> <span id="btn-update-text">บันทึกการแก้ไข ✨</span></button></div></form></div>`;
                 lucide.createIcons();
+            }
+        }
+
+        function updateEditCalc() {
+            const prev = Number(document.getElementById('e-prev').value) || 0;
+            const curr = Number(document.getElementById('e-curr').value) || 0;
+            const rate = Number(document.getElementById('e-rate').value) || 0;
+            const water = Number(document.getElementById('e-water').value) || 0;
+            const units = curr - prev;
+            const elecTot = units > 0 ? units * rate : 0;
+            const grandTot = elecTot + water;
+            
+            document.getElementById('e-calc-units').innerText = units > 0 ? units : 0;
+            document.getElementById('e-calc-elec').innerText = `฿${elecTot.toLocaleString()}`;
+            document.getElementById('e-calc-grand').innerText = `฿${grandTot.toLocaleString()}`;
+        }
+
+        async function submitEdit(e, id) {
+            e.preventDefault();
+            const prev = Number(document.getElementById('e-prev').value);
+            const curr = Number(document.getElementById('e-curr').value);
+            const rate = Number(document.getElementById('e-rate').value);
+            const water = Number(document.getElementById('e-water').value) || 0;
+            
+            if(!prev || !curr) return alert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะคะ 🥺");
+            const units = curr - prev;
+            if(units < 0) return alert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนน้า! ❌");
+
+            const btn = document.getElementById('btn-update');
+            const btnText = document.getElementById('btn-update-text');
+            btn.disabled = true; btnText.innerText = 'กำลังอัปเดต... ⏳'; btn.classList.add('opacity-70');
+
+            const oldRecord = records.find(r => r.id === id);
+            const updatedRecord = {
+                ...oldRecord, month: editState.month, year: editState.year,
+                elecPrev: prev, elecCurr: curr, elecUnits: units,
+                elecRate: rate, elecTotal: units * rate, 
+                waterTotal: water, total: (units * rate) + water,
+            };
+
+            await saveRecordToSheet(updatedRecord);
+            btnText.innerText = 'อัปเดตเรียบร้อย! 🎉';
+            setTimeout(() => { closeModal(); renderApp(); }, 800);
+        }
+        
+        function handlePrint() {
+            if (window.self !== window.top) {
+                alert("⚠️ โหมดพิมพ์/PDF อาจทำงานไม่สมบูรณ์เมื่อกดจากในหน้าต่างเล็กๆ แบบนี้นะคะ\n\nแนะนำให้เซฟโค้ดไปเปิดบนเบราว์เซอร์ Chrome แล้วค่อยกดพิมพ์น้า 🌸");
+            }
+            try {
+                window.print();
+            } catch(e) {
+                console.error("Print failed", e);
             }
         }
     </script>
