@@ -184,7 +184,7 @@
         </div>
     </div>
 
-    <!-- Modal Background with Refresh Logic -->
+    <!-- General Content Modal -->
     <div id="chart-modal" class="fixed inset-0 z-[100] bg-stone-900/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 hidden no-print" onclick="if(event.target === this) closeModal()">
         <div class="bg-white rounded-[3rem] p-8 md:p-12 w-full max-w-6xl max-h-[90vh] overflow-y-auto relative shadow-2xl flex flex-col" id="modal-container">
             <button onclick="closeModal()" class="absolute top-6 right-6 p-3 bg-stone-100 text-stone-500 rounded-full hover:bg-pink-100 hover:text-pink-500 active:scale-90 transition-all duration-300 smooth-expo z-50 shadow-sm">
@@ -194,9 +194,114 @@
         </div>
     </div>
 
+    <!-- Custom Alert Modal -->
+    <div id="custom-alert-modal" class="fixed inset-0 z-[200] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden no-print" onclick="if(event.target === this) closeCustomAlert()">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl animate-ios-pop flex flex-col items-center relative border border-white">
+            <div id="custom-alert-icon-container"></div>
+            <h3 id="custom-alert-title" class="text-2xl font-black text-stone-800 mb-2 tracking-tight"></h3>
+            <p id="custom-alert-message" class="text-stone-500 font-medium mb-8 text-sm leading-relaxed"></p>
+            <button onclick="closeCustomAlert()" class="w-full bg-stone-800 text-white font-extrabold py-4 rounded-2xl hover:bg-stone-900 active:scale-95 transition-all duration-300 shadow-lg shadow-stone-200">
+                รับทราบ
+            </button>
+        </div>
+    </div>
+
+    <!-- Custom Confirm Modal -->
+    <div id="custom-confirm-modal" class="fixed inset-0 z-[200] bg-stone-900/60 backdrop-blur-sm flex items-center justify-center p-4 hidden no-print" onclick="if(event.target === this) closeCustomConfirm()">
+        <div class="bg-white rounded-[2.5rem] p-8 w-full max-w-sm text-center shadow-2xl animate-ios-pop flex flex-col items-center relative border border-white">
+            <div class="mx-auto w-20 h-20 flex items-center justify-center rounded-full mb-5 bg-orange-50 border border-orange-100 shadow-inner">
+                <i data-lucide="help-circle" class="text-orange-500" width="36" height="36"></i>
+            </div>
+            <h3 class="text-2xl font-black text-stone-800 mb-2 tracking-tight">ยืนยันการทำรายการ</h3>
+            <p id="custom-confirm-message" class="text-stone-500 font-medium mb-8 text-sm leading-relaxed"></p>
+            <div class="flex gap-3 w-full">
+                <button onclick="closeCustomConfirm()" class="flex-1 bg-stone-100 text-stone-600 font-extrabold py-4 rounded-2xl hover:bg-stone-200 active:scale-95 transition-all duration-300">ยกเลิก</button>
+                <button onclick="executeCustomConfirm()" class="flex-1 bg-pink-500 text-white font-extrabold py-4 rounded-2xl hover:bg-pink-600 active:scale-95 transition-all duration-300 shadow-lg shadow-pink-200">ยืนยัน</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         // ==========================================
-        // 🔒 1. SESSION PROTECTION (ยามเฝ้าประตู)
+        // 🛑 SCROLL LOCK & CUSTOM MODALS
+        // ==========================================
+        let activeModals = 0;
+        function lockScroll() {
+            activeModals++;
+            document.body.style.overflow = 'hidden';
+        }
+        function unlockScroll() {
+            activeModals--;
+            if (activeModals <= 0) {
+                activeModals = 0;
+                document.body.style.overflow = '';
+            }
+        }
+
+        function showCustomAlert(message, type = 'info') {
+            const alertModal = document.getElementById('custom-alert-modal');
+            const alertMessage = document.getElementById('custom-alert-message');
+            const alertTitle = document.getElementById('custom-alert-title');
+            const iconContainer = document.getElementById('custom-alert-icon-container');
+            
+            alertMessage.innerHTML = message;
+            
+            let iconStr = ''; let titleStr = ''; let colorCls = '';
+            if (type === 'error') { 
+                iconStr = '<i data-lucide="alert-circle" class="text-rose-500" width="36" height="36"></i>'; 
+                titleStr = 'เกิดข้อผิดพลาด!'; 
+                colorCls = 'bg-rose-50 border border-rose-100'; 
+            } else if (type === 'success') { 
+                iconStr = '<i data-lucide="check-circle-2" class="text-teal-500" width="36" height="36"></i>'; 
+                titleStr = 'สำเร็จ!'; 
+                colorCls = 'bg-teal-50 border border-teal-100'; 
+            } else if (type === 'warning') { 
+                iconStr = '<i data-lucide="alert-triangle" class="text-amber-500" width="36" height="36"></i>'; 
+                titleStr = 'แจ้งเตือน!'; 
+                colorCls = 'bg-amber-50 border border-amber-100'; 
+            } else { 
+                iconStr = '<i data-lucide="info" class="text-sky-500" width="36" height="36"></i>'; 
+                titleStr = 'ข้อมูล'; 
+                colorCls = 'bg-sky-50 border border-sky-100'; 
+            }
+
+            iconContainer.innerHTML = iconStr;
+            iconContainer.className = `mx-auto w-20 h-20 flex items-center justify-center rounded-full mb-5 shadow-inner ${colorCls}`;
+            alertTitle.innerText = titleStr;
+
+            alertModal.classList.remove('hidden');
+            lucide.createIcons();
+            lockScroll();
+        }
+
+        function closeCustomAlert() {
+            document.getElementById('custom-alert-modal').classList.add('hidden');
+            unlockScroll();
+        }
+
+        let pendingConfirmAction = null;
+        function showCustomConfirm(message, actionCallback) {
+            pendingConfirmAction = actionCallback;
+            document.getElementById('custom-confirm-message').innerHTML = message;
+            document.getElementById('custom-confirm-modal').classList.remove('hidden');
+            lucide.createIcons();
+            lockScroll();
+        }
+
+        function closeCustomConfirm() {
+            pendingConfirmAction = null;
+            document.getElementById('custom-confirm-modal').classList.add('hidden');
+            unlockScroll();
+        }
+
+        function executeCustomConfirm() {
+            if (pendingConfirmAction) pendingConfirmAction();
+            closeCustomConfirm();
+        }
+
+
+        // ==========================================
+        // 🔒 SESSION PROTECTION
         // ==========================================
         const authToken = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
         if (!authToken) {
@@ -217,21 +322,21 @@
 
         function logout(e) {
             e.stopPropagation();
-            if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+            showCustomConfirm("ต้องการออกจากระบบใช่หรือไม่?", () => {
                 localStorage.removeItem('auth_token');
                 localStorage.removeItem('user_info');
                 sessionStorage.removeItem('auth_token');
                 sessionStorage.removeItem('user_info');
                 try {
                     if (window.location.protocol === 'blob:' || window.location.protocol === 'data:') {
-                        alert("ออกจากระบบแล้ว (โหมดพรีวิว)");
+                        showCustomAlert("ออกจากระบบแล้ว (โหมดพรีวิว)", "success");
                     } else {
                         window.location.replace('login.html');
                     }
                 } catch(err) {
                     console.warn(err);
                 }
-            }
+            });
         }
 
         // ==========================================
@@ -467,7 +572,7 @@
                 await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                 const index = records.findIndex(r => r.id === record.id);
                 if (index !== -1) records[index] = record; else records.push(record);
-            } catch (err) { alert("เกิดข้อผิดพลาดในการบันทึก"); }
+            } catch (err) { showCustomAlert("เกิดข้อผิดพลาดในการบันทึก", "error"); }
         }
 
         async function deleteRecordFromSheet(id) {
@@ -477,11 +582,13 @@
             try {
                 await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', id: id }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
                 records = records.filter(r => r.id !== id);
-            } catch (err) { alert("ลบข้อมูลไม่สำเร็จ"); }
+            } catch (err) { showCustomAlert("ลบข้อมูลไม่สำเร็จ", "error"); }
         }
 
         function changeTab(tab) {
-            if(currentUser.role !== 'admin' && (tab === 'scanner' || tab === 'users')) { alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้ 🥺"); return; }
+            if(currentUser.role !== 'admin' && (tab === 'scanner' || tab === 'users')) { 
+                return showCustomAlert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้ 🥺", "warning"); 
+            }
             activeTab = tab;
             if(activeTab !== 'scanner' && typeof stopCamera === 'function') {
                 try { stopCamera(); } catch(e) {}
@@ -899,6 +1006,7 @@
                 void container.offsetWidth; // Force CSS Reflow
                 container.classList.add('animate-ios-pop');
             }
+            lockScroll();
         }
 
         function openModal(type) {
@@ -924,6 +1032,7 @@
             const content = document.getElementById('modal-content');
             if(modal) modal.classList.add('hidden');
             if(content) content.innerHTML = '';
+            unlockScroll();
         }
 
         // ==========================================
@@ -1062,7 +1171,7 @@
         async function startCamera() {
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
                 console.warn("Media devices not supported");
-                alert("อุปกรณ์หรือเบราว์เซอร์ของคุณไม่รองรับการใช้งานกล้อง หรือไม่ได้รันผ่าน HTTPS/Localhost");
+                showCustomAlert("อุปกรณ์หรือเบราว์เซอร์ของคุณไม่รองรับการใช้งานกล้อง หรือไม่ได้รันผ่าน HTTPS/Localhost", "error");
                 return;
             }
             try {
@@ -1211,9 +1320,9 @@
         async function submitForm(e) {
             e.preventDefault();
             const prev = Number(formState.elecPrev), curr = Number(formState.elecCurr);
-            if(!prev || !curr) return alert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะ 🥺");
+            if(!prev || !curr) return showCustomAlert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะ 🥺", "warning");
             const units = curr - prev;
-            if(units < 0) return alert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนนะ! ❌");
+            if(units < 0) return showCustomAlert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนนะ! ❌", "error");
 
             const btn = document.getElementById('btn-save'), btnText = document.getElementById('btn-save-text');
             btn.disabled = true; btnText.innerText = 'กำลังบันทึกลง Sheet... ⏳'; btn.classList.add('opacity-70');
@@ -1269,14 +1378,14 @@
         }
 
         async function confirmDelete(id) {
-            if(confirm('คุณต้องการลบข้อมูลบิลนี้ใช่หรือไม่? 🥺')) {
+            showCustomConfirm('คุณต้องการลบข้อมูลบิลนี้ใช่หรือไม่? 🥺', async () => {
                 document.getElementById('loader').classList.remove('opacity-0', 'pointer-events-none');
                 document.getElementById('loader').style.display = 'flex';
                 await deleteRecordFromSheet(id);
                 document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
                 setTimeout(() => { document.getElementById('loader').style.display = 'none'; }, 500);
                 renderApp();
-            }
+            });
         }
 
         // ==========================================
@@ -1328,7 +1437,7 @@
             if (repPeriod === 'specific') filtered = filtered.filter(r => String(r.month).padStart(2, '0') === String(repMonth).padStart(2, '0'));
             else if (repPeriod === 'latest3') { const uniqueMonths = [...new Set(filtered.map(r => String(r.month).padStart(2, '0')))].sort().reverse().slice(0, 3); filtered = filtered.filter(r => uniqueMonths.includes(String(r.month).padStart(2, '0'))); }
             filtered.sort((a, b) => b.month - a.month);
-            if(filtered.length === 0) return alert('ไม่มีข้อมูลสำหรับ Export ค่ะ 🥺');
+            if(filtered.length === 0) return showCustomAlert('ไม่มีข้อมูลสำหรับ Export ค่ะ 🥺', 'warning');
             const headers = ['เดือน', 'ปี', 'จดก่อน', 'จดหลัง', 'หน่วยไฟ', 'เรท', 'รวมค่าไฟ', 'ค่าน้ำ', 'ยอดสุทธิ', 'วันที่บันทึก'];
             const rows = filtered.map(r => [THAI_MONTHS.find(m => m.val === String(r.month).padStart(2, '0'))?.label || r.month, r.year, r.elecPrev, r.elecCurr, r.elecUnits, r.elecRate, r.elecTotal, r.waterTotal, r.total, r.date]);
             const csvContent = "\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
@@ -1346,6 +1455,11 @@
             showModalWithAnim();
             const content = document.getElementById('modal-content');
             const savedEmail = currentUser.email || localStorage.getItem('auto_email') || '';
+            
+            // รีเซ็ตค่าให้เป็นเดือน/ปี ปัจจุบันเสมอทุกครั้งที่เปิด Popup
+            snMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+            snYear = String(new Date().getFullYear() + 543);
+
             const reportMonthOpts = THAI_MONTHS.map(m => ({ value: m.val, label: m.label }));
             let reportYearOpts = [];
             for(let i = 0; i < 3; i++) { reportYearOpts.push({ value: String(new Date().getFullYear() + 543 - i), label: `ปี พ.ศ. ${new Date().getFullYear() + 543 - i}` }); }
@@ -1363,7 +1477,7 @@
 
         async function saveEmailSetup() {
             const email = document.getElementById('setup-email').value;
-            if(!email || !email.includes('@')) return alert('กรุณากรอกอีเมลให้ถูกต้องค่ะ 🥺');
+            if(!email || !email.includes('@')) return showCustomAlert('กรุณากรอกอีเมลให้ถูกต้องค่ะ 🥺', 'warning');
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
                     const payload = { action: 'saveEmail', username: currentUser.username, email: email };
@@ -1371,13 +1485,13 @@
                 }
                 localStorage.setItem('auto_email', email);
                 currentUser.email = email;
-                alert('บันทึกอีเมลเรียบร้อยแล้วค่ะ! 💌');
-            } catch (err) { alert('บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะคะ 🥺'); }
+                showCustomAlert('บันทึกอีเมลเรียบร้อยแล้วค่ะ! 💌', 'success');
+            } catch (err) { showCustomAlert('บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะคะ 🥺', 'error'); }
         }
 
         async function sendEmailNow() {
             const email = document.getElementById('setup-email').value;
-            if(!email) return alert('กรุณาบันทึกอีเมลด้านบนก่อนนะคะ 🥺');
+            if(!email) return showCustomAlert('กรุณาบันทึกอีเมลด้านบนก่อนนะคะ 🥺', 'warning');
             
             const btn = document.getElementById('btn-send-now');
             btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" width="18"></i> กำลังส่ง...';
@@ -1387,9 +1501,9 @@
                     const payload = { action: 'sendReportNow', email: email, period: 'specific', month: snMonth, year: snYear };
                     const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
                     const result = await res.json();
-                    if(result.status === 'success') alert(result.message); else alert(result.message);
-                } else { alert(`(ระบบจำลอง) ส่งรายงานเดือน ${snMonth}/${snYear} ไปที่ ${email} สำเร็จแล้ว 🚀`); }
-            } catch (err) { alert('ส่งไม่สำเร็จค่ะ 🥺'); }
+                    showCustomAlert(result.message, result.status === 'success' ? 'success' : 'error');
+                } else { showCustomAlert(`(ระบบจำลอง) ส่งรายงานเดือน ${snMonth}/${snYear} ไปที่ ${email} สำเร็จแล้ว 🚀`, 'success'); }
+            } catch (err) { showCustomAlert('ส่งไม่สำเร็จค่ะ 🥺', 'error'); }
             btn.innerHTML = 'ส่งเข้าอีเมลทันที 🚀';
         }
 
@@ -1402,9 +1516,9 @@
                     const payload = { action: 'scheduleReport', day: scheduleDay, hour: scheduleHour };
                     const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
                     const result = await res.json();
-                    if(result.status === 'success') alert(result.message); else alert(result.message);
-                } else { alert(`(ระบบจำลอง) ตั้งเวลาให้ส่งอัตโนมัติทุกวันที่ ${scheduleDay} เวลา ${scheduleHour}:00 น. สำเร็จ! ⏰`); }
-            } catch (err) { alert('ตั้งเวลาไม่สำเร็จค่ะ 🥺'); }
+                    showCustomAlert(result.message, result.status === 'success' ? 'success' : 'error');
+                } else { showCustomAlert(`(ระบบจำลอง) ตั้งเวลาให้ส่งอัตโนมัติทุกวันที่ ${scheduleDay} เวลา ${scheduleHour}:00 น. สำเร็จ! ⏰`, 'success'); }
+            } catch (err) { showCustomAlert('ตั้งเวลาไม่สำเร็จค่ะ 🥺', 'error'); }
             btn.innerHTML = 'บันทึกเวลาส่งอัตโนมัติ ⏰';
         }
 
@@ -1442,8 +1556,8 @@
             const password = document.getElementById('nu-password').value;
             const captcha = parseInt(document.getElementById('nu-captcha').value);
 
-            if (captcha !== currentCaptchaAnswer) { alert('บวกเลขผิดนะ เอ๊ะ! หรือว่าเป็นบอทจริงๆ 🤖❌'); document.getElementById('nu-captcha').value = ''; return; }
-            if (usersList.some(u => u.username === username)) { alert('ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้วค่ะ 🥺'); return; }
+            if (captcha !== currentCaptchaAnswer) { showCustomAlert('บวกเลขผิดนะ เอ๊ะ! หรือว่าเป็นบอทจริงๆ 🤖❌', 'error'); document.getElementById('nu-captcha').value = ''; return; }
+            if (usersList.some(u => u.username === username)) { showCustomAlert('ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้วค่ะ 🥺', 'warning'); return; }
 
             const btn = document.getElementById('btn-save-user');
             const btnText = document.getElementById('btn-save-user-text');
@@ -1455,7 +1569,10 @@
         }
         
         async function confirmDeleteUser(id) {
-            if(confirm('คุณต้องการลบผู้ใช้นี้ใช่หรือไม่? 🥺')) { usersList = usersList.filter(u => u.id !== id); renderApp(); }
+            showCustomConfirm('คุณต้องการลบผู้ใช้นี้ใช่หรือไม่? 🥺', () => { 
+                usersList = usersList.filter(u => u.id !== id); 
+                renderApp(); 
+            });
         }
 
         function openEditModal(id) {
@@ -1497,9 +1614,9 @@
             const rate = Number(document.getElementById('e-rate').value);
             const water = Number(document.getElementById('e-water').value) || 0;
             
-            if(!prev || !curr) return alert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะคะ 🥺");
+            if(!prev || !curr) return showCustomAlert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะคะ 🥺", "warning");
             const units = curr - prev;
-            if(units < 0) return alert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนน้า! ❌");
+            if(units < 0) return showCustomAlert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนน้า! ❌", "error");
 
             const btn = document.getElementById('btn-update');
             const btnText = document.getElementById('btn-update-text');
@@ -1514,13 +1631,13 @@
             };
 
             await saveRecordToSheet(updatedRecord);
-            btnText.innerText = 'อัปเดตเรียบร้อย! 🎉';
+            showCustomAlert('อัปเดตเรียบร้อย! 🎉', 'success');
             setTimeout(() => { closeModal(); renderApp(); }, 800);
         }
         
         function handlePrint() {
             if (window.self !== window.top) {
-                alert("⚠️ โหมดพิมพ์/PDF อาจทำงานไม่สมบูรณ์เมื่อกดจากในหน้าต่างเล็กๆ แบบนี้นะคะ\n\nแนะนำให้เซฟโค้ดไปเปิดบนเบราว์เซอร์ Chrome แล้วค่อยกดพิมพ์น้า 🌸");
+                showCustomAlert("⚠️ โหมดพิมพ์/PDF อาจทำงานไม่สมบูรณ์เมื่อกดจากในหน้าต่างเล็กๆ แบบนี้นะคะ<br><br>แนะนำให้เซฟโค้ดไปเปิดบนเบราว์เซอร์ Chrome แล้วค่อยกดพิมพ์น้า 🌸", "warning");
             }
             try {
                 window.print();
