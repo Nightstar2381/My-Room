@@ -19,6 +19,13 @@
             -webkit-tap-highlight-color: transparent;
         }
 
+        /* --- Prevent iOS Safari Auto-Zoom on Inputs --- */
+        @media screen and (max-width: 1024px) {
+            input, select, textarea {
+                font-size: 16px !important;
+            }
+        }
+
         /* --- Premium iOS Smoothness --- */
         @keyframes ios-up {
             0% { opacity: 0; transform: translateY(25px) scale(0.98); }
@@ -84,7 +91,7 @@
 
     <div id="loader" class="fixed inset-0 bg-[#FFF6F7] z-[999] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="animate-spin text-pink-400 mb-4"><i data-lucide="refresh-cw" width="40" height="40"></i></div>
-        <div class="text-pink-400 font-bold text-lg">กำลังตรวจสอบสิทธิ์... 🌸</div>
+        <div class="text-pink-400 font-bold text-lg">กำลังโหลดข้อมูล... 🌸</div>
     </div>
 
     <!-- Desktop Floating User Profile -->
@@ -165,8 +172,8 @@
         </div>
     </div>
 
-    <!-- Modal -->
-    <div id="chart-modal" class="fixed inset-0 z-[100] bg-stone-900/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 animate-ios-fade hidden no-print">
+    <!-- Modal (Added onclick for backdrop close) -->
+    <div id="chart-modal" class="fixed inset-0 z-[100] bg-stone-900/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 animate-ios-fade hidden no-print" onclick="if(event.target === this) closeModal()">
         <div class="bg-white rounded-[3rem] p-8 md:p-12 w-full max-w-6xl max-h-[90vh] overflow-y-auto relative shadow-2xl flex flex-col animate-ios-pop" id="modal-container">
             <button onclick="closeModal()" class="absolute top-6 right-6 p-3 bg-stone-100 text-stone-500 rounded-full hover:bg-pink-100 hover:text-pink-500 active:scale-90 transition-all duration-300 smooth-expo z-50 shadow-sm">
                 <i data-lucide="x"></i>
@@ -457,7 +464,9 @@
         function changeTab(tab) {
             if(currentUser.role !== 'admin' && (tab === 'scanner' || tab === 'users')) { alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้ 🥺"); return; }
             activeTab = tab;
-            if(activeTab !== 'scanner' && typeof stopCamera === 'function') stopCamera(); 
+            if(activeTab !== 'scanner' && typeof stopCamera === 'function') {
+                try { stopCamera(); } catch(e) {}
+            }
             
             document.querySelectorAll('.nav-btn').forEach(btn => {
                 const isActive = btn.dataset.tab === tab;
@@ -491,7 +500,9 @@
                 setTimeout(() => { isDrawn = true; updateChartAnimations(); }, 150);
             } else if (activeTab === 'scanner') {
                 container.innerHTML = getScannerHTML();
-                if(typeof startCamera === 'function') startCamera(); 
+                if(typeof startCamera === 'function') {
+                    setTimeout(() => startCamera(), 100);
+                }
                 setupFormListeners(); autoFillPrevMeter(); 
             } else if (activeTab === 'data') {
                 container.innerHTML = getDataViewHTML();
@@ -879,20 +890,20 @@
 
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
                     <div class="flex flex-col gap-4 animate-ios-up" style="animation-delay: 0.1s">
-                        <div class="bg-stone-900 rounded-[2.5rem] overflow-hidden shadow-lg border-4 border-white relative w-full aspect-[3/4] md:aspect-[4/5] flex items-center justify-center group" id="cam-container">
+                        <div class="bg-stone-900 rounded-[3rem] overflow-hidden shadow-lg border-4 border-white relative w-full max-w-md mx-auto aspect-square flex items-center justify-center group" id="cam-container">
                             <video id="cam-video" autoplay playsinline class="w-full h-full object-cover ${isPhotoTaken?'hidden':''}"></video>
                             <div id="preview-scroll-area" class="w-full h-full overflow-auto no-scrollbar scroll-smooth ${isPhotoTaken?'':'hidden'}">
                                 <img id="cam-preview" class="w-full h-full object-contain origin-top-left transition-all duration-200" style="min-width: 100%; min-height: 100%;" />
                             </div>
                             <canvas id="cam-canvas" class="hidden"></canvas>
                             
-                            <div id="cam-overlay" class="absolute inset-4 border-2 border-white/30 rounded-2xl pointer-events-none flex flex-col items-center justify-center ${isPhotoTaken?'hidden':''}">
-                                <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-pink-400 rounded-tl-xl"></div>
-                                <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-pink-400 rounded-tr-xl"></div>
-                                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-pink-400 rounded-bl-xl"></div>
-                                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-pink-400 rounded-br-xl"></div>
+                            <div id="cam-overlay" class="absolute inset-6 md:inset-8 border-2 border-white/30 rounded-[2rem] pointer-events-none flex flex-col items-center justify-center ${isPhotoTaken?'hidden':''}">
+                                <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-pink-400 rounded-tl-[1.5rem]"></div>
+                                <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-pink-400 rounded-tr-[1.5rem]"></div>
+                                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-pink-400 rounded-bl-[1.5rem]"></div>
+                                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-pink-400 rounded-br-[1.5rem]"></div>
                                 <div class="laser-line"></div>
-                                <span class="bg-black/50 text-white font-bold text-xs px-4 py-2 rounded-full backdrop-blur-md shadow-sm relative z-30">วางบิลให้อยู่ในกรอบ</span>
+                                <span class="bg-black/60 text-white font-bold text-xs px-4 py-2 rounded-full backdrop-blur-md shadow-sm relative z-30">วางบิลสี่เหลี่ยม (20x20 ซม.) ในกรอบ</span>
                             </div>
 
                             <div class="absolute top-4 left-4 right-4 flex justify-between items-center z-40 ${isPhotoTaken?'hidden':''}" id="cam-top-controls">
@@ -982,9 +993,14 @@
         }
 
         async function startCamera() {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+                console.warn("Media devices not supported");
+                alert("อุปกรณ์หรือเบราว์เซอร์ของคุณไม่รองรับการใช้งานกล้อง หรือไม่ได้รันผ่าน HTTPS/Localhost");
+                return;
+            }
             try {
                 if (stream) stopCamera();
-                const constraints = { video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } } };
+                const constraints = { video: { facingMode: { ideal: currentFacingMode }, width: { ideal: 1920 }, height: { ideal: 1080 } } };
                 stream = await navigator.mediaDevices.getUserMedia(constraints);
                 const video = document.getElementById('cam-video');
                 if(video) video.srcObject = stream;
@@ -1000,12 +1016,18 @@
                 }
             } catch (err) { 
                 console.log("Camera error", err);
-                if(err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
+                try {
+                    stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                    const video = document.getElementById('cam-video');
+                    if(video) video.srcObject = stream;
+                } catch(e) {
                     try {
-                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                        stream = await navigator.mediaDevices.getUserMedia({ video: true });
                         const video = document.getElementById('cam-video');
                         if(video) video.srcObject = stream;
-                    } catch(e) {}
+                    } catch(fallbackErr) {
+                        console.error("Camera completely failed", fallbackErr);
+                    }
                 }
             }
         }
