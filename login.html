@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>เข้าสู่ระบบ - MyRoom Utility Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #FFF8F9;
+            color: #44403c;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- Premium iOS Smoothness --- */
+        @keyframes ios-up {
+            0% { opacity: 0; transform: translateY(30px) scale(0.95); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-ios-up { animation: ios-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+        
+        @keyframes ios-pop {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-ios-pop { animation: ios-pop 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; opacity: 0; }
+
+        @keyframes blob-bounce {
+            0% { transform: translate(0px, 0px) scale(1); }
+            33% { transform: translate(30px, -50px) scale(1.1); }
+            66% { transform: translate(-20px, 20px) scale(0.9); }
+            100% { transform: translate(0px, 0px) scale(1); }
+        }
+        .animate-blob { animation: blob-bounce 10s infinite alternate; }
+        .animation-delay-2000 { animation-delay: 2s; }
+        .animation-delay-4000 { animation-delay: 4s; }
+
+        .smooth-expo { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important; }
+        .smooth-spring { transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1) !important; }
+        
+        @keyframes shimmer {
+            100% { transform: translateX(100%); }
+        }
+    </style>
+</head>
+<body class="selection:bg-pink-200 selection:text-pink-900 overflow-hidden relative min-h-screen flex items-center justify-center">
+
+    <!-- 🎨 Background Decorative Blobs -->
+    <div class="fixed inset-0 z-0 overflow-hidden pointer-events-none">
+        <div class="absolute top-[-10%] left-[-10%] w-96 h-96 bg-pink-200 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob"></div>
+        <div class="absolute top-[20%] right-[-10%] w-96 h-96 bg-teal-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-2000"></div>
+        <div class="absolute bottom-[-20%] left-[20%] w-[30rem] h-[30rem] bg-sky-100 rounded-full mix-blend-multiply filter blur-3xl opacity-50 animate-blob animation-delay-4000"></div>
+    </div>
+
+    <!-- 🌟 Main Login Card -->
+    <div class="w-full max-w-md px-6 relative z-10">
+        <div class="bg-white/80 backdrop-blur-2xl rounded-[3rem] p-8 md:p-10 shadow-2xl shadow-pink-100/50 border border-white animate-ios-up" style="animation-delay: 0.1s">
+            
+            <div class="flex flex-col items-center text-center mb-8 animate-ios-up" style="animation-delay: 0.2s">
+                <div class="bg-gradient-to-br from-pink-300 to-pink-400 p-4 rounded-[1.5rem] text-white shadow-lg shadow-pink-200 transform transition-transform duration-500 hover:scale-110 hover:rotate-6 smooth-spring mb-5">
+                    <i data-lucide="sparkles" width="32" height="32" class="text-white"></i>
+                </div>
+                <h1 class="font-black text-3xl text-stone-800 tracking-tight mb-2">ยินดีต้อนรับ! 🌸</h1>
+                <p class="text-sm font-bold text-stone-400 uppercase tracking-wider">เข้าสู่ระบบจัดการบิล MyRoom</p>
+            </div>
+
+            <form id="login-form" class="space-y-5" onsubmit="handleLogin(event)">
+                <div class="space-y-2 animate-ios-up" style="animation-delay: 0.3s">
+                    <label class="block text-[11px] font-bold text-stone-400 uppercase pl-2">ชื่อผู้ใช้งาน หรือ อีเมล</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="user" width="20" class="text-stone-300 group-focus-within:text-pink-400 transition-colors duration-300"></i>
+                        </div>
+                        <input type="text" id="username" required placeholder="admin" 
+                            class="w-full pl-12 pr-4 py-4 bg-stone-50/50 border-2 border-transparent rounded-[1.5rem] text-stone-700 font-bold focus:bg-white focus:border-pink-300 focus:ring-4 focus:ring-pink-50 outline-none transition-all duration-300 smooth-expo placeholder-stone-300 shadow-inner">
+                    </div>
+                </div>
+
+                <div class="space-y-2 animate-ios-up" style="animation-delay: 0.4s">
+                    <label class="block text-[11px] font-bold text-stone-400 uppercase pl-2">รหัสผ่าน</label>
+                    <div class="relative group">
+                        <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                            <i data-lucide="lock" width="20" class="text-stone-300 group-focus-within:text-pink-400 transition-colors duration-300"></i>
+                        </div>
+                        <input type="password" id="password" required placeholder="••••••••" 
+                            class="w-full pl-12 pr-12 py-4 bg-stone-50/50 border-2 border-transparent rounded-[1.5rem] text-stone-700 font-bold focus:bg-white focus:border-pink-300 focus:ring-4 focus:ring-pink-50 outline-none transition-all duration-300 smooth-expo placeholder-stone-300 shadow-inner">
+                        <button type="button" onclick="togglePassword()" class="absolute inset-y-0 right-0 pr-4 flex items-center text-stone-400 hover:text-pink-500 transition-colors outline-none focus:text-pink-500">
+                            <i data-lucide="eye" id="eye-icon" width="20"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 🤖 Math CAPTCHA Protection -->
+                <div class="bg-orange-50/50 border border-orange-100 p-3 rounded-2xl relative animate-ios-up" style="animation-delay: 0.42s">
+                    <label class="text-xs font-bold text-orange-500 uppercase pl-1 flex items-center gap-1 mb-2">
+                        <i data-lucide="bot" width="14"></i> ยืนยันว่าไม่ใช่บอท
+                    </label>
+                    <div class="flex items-center gap-3">
+                        <span id="captcha-question" class="text-lg font-black text-stone-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-stone-100"></span>
+                        <input type="number" id="captcha-answer" required placeholder="?" class="w-20 p-2 text-center bg-white rounded-xl text-stone-700 font-black text-lg focus:ring-4 focus:ring-orange-100 outline-none border border-stone-100 focus:border-orange-300 shadow-inner">
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-between px-2 animate-ios-up" style="animation-delay: 0.45s">
+                    <label class="flex items-center gap-2 cursor-pointer group">
+                        <div class="relative flex items-center justify-center">
+                            <input type="checkbox" id="remember-me" class="peer appearance-none w-5 h-5 border-2 border-stone-200 rounded-lg checked:bg-pink-400 checked:border-pink-400 transition-all cursor-pointer">
+                            <i data-lucide="check" width="12" class="absolute text-white opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none"></i>
+                        </div>
+                        <span class="text-xs font-bold text-stone-500 group-hover:text-stone-700 transition-colors select-none">จดจำฉันไว้</span>
+                    </label>
+                    <a href="#" class="text-xs font-bold text-pink-400 hover:text-pink-500 transition-colors">ลืมรหัสผ่าน?</a>
+                </div>
+
+                <div id="error-msg" class="hidden bg-red-50 text-red-500 text-xs font-bold p-3 rounded-2xl border border-red-100 text-center shadow-sm mt-4"></div>
+
+                <div class="pt-4 animate-ios-up" style="animation-delay: 0.5s">
+                    <button type="submit" id="btn-login" class="w-full bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-lg py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2 relative overflow-hidden group">
+                        <div class="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/40 to-transparent group-hover:animate-[shimmer_1.5s_infinite]"></div>
+                        <span id="btn-text" class="relative z-10 flex items-center gap-2">เข้าสู่ระบบ <i data-lucide="arrow-right" width="20"></i></span>
+                    </button>
+                </div>
+            </form>
+
+            <p class="text-center text-[11px] font-bold text-stone-300 mt-8 animate-ios-up" style="animation-delay: 0.6s">
+                Protected by MyRoom Secure System
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ⚠️ ใส่ URL ของ Google Apps Script ของคุณที่นี่
+        // ==========================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1AXXgH9FfQ8x_O_E_Z1k_YOUR_APP_SCRIPT_URL_HERE/exec"; 
+
+        window.onload = () => {
+            const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+            if (token) { window.location.href = 'index.html'; }
+            generateCaptcha(); // Initialize CAPTCHA
+        };
+
+        lucide.createIcons();
+
+        let currentCaptchaAnswer = 0;
+        function generateCaptcha() {
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            currentCaptchaAnswer = num1 + num2;
+            document.getElementById('captcha-question').innerText = `${num1} + ${num2} = `;
+        }
+
+        function togglePassword() {
+            const input = document.getElementById('password');
+            const icon = document.getElementById('eye-icon');
+            if (input.type === 'password') { input.type = 'text'; icon.setAttribute('data-lucide', 'eye-off'); } 
+            else { input.type = 'password'; icon.setAttribute('data-lucide', 'eye'); }
+            lucide.createIcons();
+        }
+
+        async function handleLogin(e) {
+            e.preventDefault();
+            const btn = document.getElementById('btn-login');
+            const btnText = document.getElementById('btn-text');
+            const errorBox = document.getElementById('error-msg');
+            const rememberMe = document.getElementById('remember-me').checked;
+            
+            const user = document.getElementById('username').value.trim();
+            const pass = document.getElementById('password').value;
+            const captchaVal = parseInt(document.getElementById('captcha-answer').value);
+
+            if(!user || !pass) return;
+
+            // ตรวจสอบ CAPTCHA ก่อน
+            if (captchaVal !== currentCaptchaAnswer) {
+                showError('บวกเลขผิดนะ! ยืนยัน CAPTCHA ใหม่อีกครั้ง 🤖❌', btn, btnText, errorBox);
+                generateCaptcha();
+                document.getElementById('captcha-answer').value = '';
+                return;
+            }
+
+            btn.disabled = true;
+            btn.classList.add('opacity-80', 'cursor-wait');
+            btnText.innerHTML = '<i data-lucide="loader-2" width="20" class="animate-spin"></i> กำลังตรวจสอบ...';
+            errorBox.classList.add('hidden');
+            lucide.createIcons();
+
+            try {
+                if (GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    simulateMockLogin(user, pass, btn, btnText, errorBox, rememberMe);
+                    return;
+                }
+
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    body: JSON.stringify({ action: 'login', username: user, password: pass }),
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'success') {
+                    loginSuccess(result.token, result.user, rememberMe, btn, btnText);
+                } else {
+                    showError(result.message, btn, btnText, errorBox);
+                    generateCaptcha(); // เปลี่ยนเลขใหม่เมื่อล็อกอินผิด
+                    document.getElementById('captcha-answer').value = '';
+                }
+
+            } catch (err) {
+                showError("เกิดข้อผิดพลาดในการเชื่อมต่อเซิร์ฟเวอร์", btn, btnText, errorBox);
+            }
+        }
+
+        function loginSuccess(token, userObj, remember, btn, btnText) {
+            if (remember) {
+                localStorage.setItem('auth_token', token);
+                localStorage.setItem('user_info', JSON.stringify(userObj));
+            } else {
+                sessionStorage.setItem('auth_token', token);
+                sessionStorage.setItem('user_info', JSON.stringify(userObj));
+            }
+            btnText.innerHTML = '<i data-lucide="check-circle-2" width="20"></i> สำเร็จ! กำลังเข้าสู่ระบบ...';
+            lucide.createIcons();
+            btn.classList.replace('from-pink-400', 'from-teal-400');
+            btn.classList.replace('to-pink-500', 'to-teal-500');
+            btn.classList.replace('shadow-pink-200', 'shadow-teal-200');
+            setTimeout(() => { window.location.href = 'index.html'; }, 800);
+        }
+
+        function showError(msg, btn, btnText, errorBox) {
+            errorBox.innerText = msg;
+            errorBox.classList.remove('hidden');
+            errorBox.classList.remove('animate-ios-pop');
+            void errorBox.offsetWidth; 
+            errorBox.classList.add('animate-ios-pop');
+            btn.disabled = false;
+            btn.classList.remove('opacity-80', 'cursor-wait');
+            btnText.innerHTML = 'เข้าสู่ระบบ <i data-lucide="arrow-right" width="20"></i>';
+            lucide.createIcons();
+        }
+
+        let mockAttempts = parseInt(localStorage.getItem('mock_attempts') || '0');
+        let mockLockoutTime = parseInt(localStorage.getItem('mock_lockout') || '0');
+
+        function simulateMockLogin(user, pass, btn, btnText, errorBox, rememberMe) {
+            setTimeout(() => {
+                if (Date.now() < mockLockoutTime) {
+                    const remaining = Math.ceil((mockLockoutTime - Date.now()) / 60000);
+                    showError(`บัญชีถูกล็อกชั่วคราว กรุณารอ ${remaining} นาที`, btn, btnText, errorBox);
+                    return;
+                }
+                if (user === 'admin' && pass === '12345678') {
+                    localStorage.removeItem('mock_attempts');
+                    localStorage.removeItem('mock_lockout');
+                    mockAttempts = 0;
+                    loginSuccess('mock_token_xyz123', { username: 'admin', role: 'admin' }, rememberMe, btn, btnText);
+                } else {
+                    mockAttempts++;
+                    localStorage.setItem('mock_attempts', mockAttempts);
+                    if (mockAttempts >= 3) {
+                        mockLockoutTime = Date.now() + (15 * 60 * 1000);
+                        localStorage.setItem('mock_lockout', mockLockoutTime);
+                        localStorage.removeItem('mock_attempts');
+                        mockAttempts = 0;
+                        showError('คุณกรอกรหัสผิดเกิน 3 ครั้ง บัญชีถูกล็อก 15 นาทีเพื่อความปลอดภัย', btn, btnText, errorBox);
+                    } else {
+                        showError(`ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (เหลือโอกาส ${3 - mockAttempts} ครั้ง)`, btn, btnText, errorBox);
+                        generateCaptcha(); // สุ่มเลขใหม่
+                        document.getElementById('captcha-answer').value = '';
+                    }
+                }
+            }, 1000);
+        }
+    </script>
+</body>
+</html>
