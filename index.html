@@ -1,0 +1,1803 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>MyRoom Utility Manager</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Prompt:wght@300;400;500;600;700;800&display=swap');
+        
+        body {
+            font-family: 'Prompt', sans-serif;
+            background-color: #FFF8F9;
+            color: #44403c;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* --- Premium iOS Smoothness --- */
+        @keyframes ios-up {
+            0% { opacity: 0; transform: translateY(25px) scale(0.98); }
+            100% { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        .animate-ios-up { animation: ios-up 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+        
+        @keyframes ios-pop {
+            0% { opacity: 0; transform: scale(0.9); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        .animate-ios-pop { animation: ios-pop 0.6s cubic-bezier(0.23, 1, 0.32, 1) forwards; opacity: 0; }
+
+        @keyframes ios-fade {
+            0% { opacity: 0; }
+            100% { opacity: 1; }
+        }
+        .animate-ios-fade { animation: ios-fade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; opacity: 0; }
+
+        .smooth-expo { transition-timing-function: cubic-bezier(0.16, 1, 0.3, 1) !important; }
+        .smooth-spring { transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1) !important; }
+        
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Modal Blur */
+        .backdrop-blur-xl { backdrop-filter: blur(24px); -webkit-backdrop-filter: blur(24px); }
+
+        /* --- Cute Custom Scrollbar for Dropdowns --- */
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #fbcfe8; border-radius: 10px; }
+        .custom-scrollbar:hover::-webkit-scrollbar-thumb { background-color: #f472b6; }
+
+        /* --- Advanced Camera UI --- */
+        @keyframes scan-laser {
+            0% { top: 5%; opacity: 0; }
+            10% { opacity: 1; }
+            90% { opacity: 1; }
+            100% { top: 95%; opacity: 0; }
+        }
+        .laser-line {
+            position: absolute; left: 2%; right: 2%; height: 2px; background: #f472b6;
+            box-shadow: 0 0 10px #f472b6, 0 0 20px #f472b6; animation: scan-laser 2.5s infinite linear; z-index: 20;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none; height: 20px; width: 20px; border-radius: 50%;
+            background: #f472b6; cursor: pointer; box-shadow: 0 2px 6px rgba(244, 114, 182, 0.5);
+        }
+
+        /* --- Print Setup For Report --- */
+        @media print {
+            body { background-color: white !important; }
+            nav, #mobile-fab, .mobile-header, .no-print { display: none !important; }
+            #main-content { padding: 0 !important; margin: 0 !important; width: 100% !important; max-width: 100% !important; overflow: visible !important; }
+            #report-print-area { width: 100% !important; max-width: 100% !important; box-shadow: none !important; border: none !important; padding: 0 !important; margin: 0 !important; page-break-inside: avoid; }
+            .print-break-before { page-break-before: always; }
+        }
+    </style>
+</head>
+<body class="selection:bg-pink-200 selection:text-pink-900 overflow-x-hidden">
+
+    <div id="loader" class="fixed inset-0 bg-[#FFF6F7] z-[999] flex flex-col items-center justify-center transition-opacity duration-500">
+        <div class="animate-spin text-pink-400 mb-4"><i data-lucide="refresh-cw" width="40" height="40"></i></div>
+        <div class="text-pink-400 font-bold text-lg">กำลังซิงค์ข้อมูล... 🌸</div>
+    </div>
+
+    <!-- Desktop Floating User Profile -->
+    <div onclick="toggleDemoRole()" class="hidden md:flex fixed top-6 right-8 z-40 items-center gap-3 bg-white/90 backdrop-blur-xl px-2 pr-4 py-2 rounded-[2rem] shadow-sm border border-pink-100 animate-ios-up cursor-pointer hover:shadow-md hover:scale-105 active:scale-95 transition-all duration-300 smooth-expo group no-print" title="คลิกเพื่อสลับบทบาท (Admin ↔ User)">
+        <img id="profile-avatar" src="" alt="Avatar" class="w-10 h-10 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover">
+        <div class="text-right">
+            <p id="profile-username" class="text-sm font-extrabold text-stone-700 leading-none group-hover:text-pink-500 transition-colors"></p>
+            <p id="profile-role" class="text-[10px] font-bold uppercase mt-0.5"></p>
+        </div>
+    </div>
+
+    <div class="flex flex-col md:flex-row max-w-[1600px] mx-auto min-h-screen relative hidden" id="app-container">
+        
+        <!-- 📱 Mobile Top Header -->
+        <div class="md:hidden flex items-center justify-between bg-white/90 backdrop-blur-xl p-4 sticky top-0 z-[60] border-b border-pink-100 shadow-sm mobile-header animate-ios-fade no-print">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-br from-pink-300 to-pink-400 p-2 rounded-xl text-white shadow-sm">
+                    <i data-lucide="sparkles" width="18" height="18"></i>
+                </div>
+                <div>
+                    <h1 class="font-black text-lg tracking-tight text-stone-800 leading-none mt-1">MyRoom</h1>
+                    <p class="text-[9px] text-pink-400 font-bold tracking-wider uppercase">Utility Manager</p>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <img id="mobile-profile-avatar" onclick="toggleDemoRole()" src="" class="w-9 h-9 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover active:scale-90 transition-transform cursor-pointer" title="สลับบทบาท">
+                <button onclick="toggleMobileMenu()" class="p-2 text-stone-600 hover:text-pink-500 bg-stone-50 border border-stone-100 rounded-xl active:scale-95 transition-all focus:outline-none">
+                    <i data-lucide="menu" width="22" height="22"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- 🌑 Mobile Menu Backdrop -->
+        <div id="mobile-menu-backdrop" onclick="closeMobileMenu()" class="fixed inset-0 bg-stone-900/40 backdrop-blur-sm z-[65] opacity-0 pointer-events-none transition-opacity duration-300 md:hidden no-print"></div>
+
+        <!-- 🍔 Sidebar Navigation -->
+        <nav id="sidebar" class="fixed md:sticky top-0 left-0 h-screen w-[280px] md:w-72 bg-white/95 md:bg-white/80 backdrop-blur-xl border-r border-pink-100/60 flex-shrink-0 flex flex-col justify-start z-[70] transform -translate-x-full md:translate-x-0 transition-transform duration-500 smooth-expo shadow-2xl md:shadow-none no-print">
+            <div class="p-6 md:p-8 flex items-center justify-between md:block animate-ios-up" style="animation-delay: 0s">
+                <div class="flex items-center gap-4">
+                    <div class="bg-gradient-to-br from-pink-300 to-pink-400 p-3 rounded-2xl text-white shadow-sm shadow-pink-200 transform transition-transform duration-500 hover:scale-110 hover:rotate-3 smooth-spring">
+                        <i data-lucide="sparkles" class="text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl tracking-tight text-stone-800">MyRoom</h1>
+                        <p class="text-[11px] text-pink-400 font-bold tracking-wider uppercase">Utility Manager</p>
+                    </div>
+                </div>
+                <button onclick="closeMobileMenu()" class="md:hidden p-2 text-stone-400 hover:text-pink-500 bg-stone-50 rounded-full active:scale-95 transition-all focus:outline-none">
+                    <i data-lucide="x" width="20" height="20"></i>
+                </button>
+            </div>
+            
+            <div class="flex flex-col px-5 pb-5 gap-2 overflow-y-auto flex-1 no-scrollbar" id="nav-menu">
+                <button onclick="changeTab('dashboard')" class="nav-btn active animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold bg-pink-100 text-pink-600 shadow-sm shadow-pink-100/50" style="animation-delay: 0.05s" data-tab="dashboard"><i data-lucide="layout-dashboard"></i> <span class="hidden sm:inline-block">ภาพรวม (Dashboard)</span></button>
+                <button onclick="changeTab('scanner')" id="nav-scanner" class="nav-btn animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold text-stone-400 hover:bg-pink-50 hover:text-pink-500" style="animation-delay: 0.1s" data-tab="scanner"><i data-lucide="camera"></i> <span class="hidden sm:inline-block">บันทึกบิล (Entry)</span></button>
+                <button onclick="changeTab('data')" class="nav-btn animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold text-stone-400 hover:bg-pink-50 hover:text-pink-500" style="animation-delay: 0.15s" data-tab="data"><i data-lucide="database"></i> <span class="hidden sm:inline-block">ข้อมูล (Database)</span></button>
+                <button onclick="changeTab('report')" class="nav-btn animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold text-stone-400 hover:bg-pink-50 hover:text-pink-500" style="animation-delay: 0.2s" data-tab="report"><i data-lucide="file-bar-chart"></i> <span class="hidden sm:inline-block">รายงาน (Report)</span></button>
+                <button onclick="changeTab('users')" id="nav-users" class="nav-btn animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold text-stone-400 hover:bg-pink-50 hover:text-pink-500" style="animation-delay: 0.25s" data-tab="users"><i data-lucide="users"></i> <span class="hidden sm:inline-block">ผู้ใช้งาน (Users)</span></button>
+            </div>
+        </nav>
+
+        <main class="flex-1 p-4 md:p-10 lg:p-12 overflow-y-auto w-full pb-24 md:pb-12" id="main-content"></main>
+
+        <!-- Mobile FAB -->
+        <div class="md:hidden fixed bottom-6 right-6 z-40 animate-ios-up no-print" style="animation-delay: 0.3s" id="mobile-fab">
+            <button onclick="changeTab('scanner')" class="bg-pink-400 text-white p-4 rounded-full shadow-lg shadow-pink-200 hover:scale-110 active:scale-90 transition-all duration-300 smooth-expo">
+                <i data-lucide="camera" width="26" height="26"></i>
+            </button>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div id="chart-modal" class="fixed inset-0 z-[100] bg-stone-900/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 animate-ios-fade hidden no-print">
+        <div class="bg-white rounded-[3rem] p-8 md:p-12 w-full max-w-6xl max-h-[90vh] overflow-y-auto relative shadow-2xl flex flex-col animate-ios-pop" id="modal-container">
+            <button onclick="closeModal()" class="absolute top-6 right-6 p-3 bg-stone-100 text-stone-500 rounded-full hover:bg-pink-100 hover:text-pink-500 active:scale-90 transition-all duration-300 smooth-expo z-50 shadow-sm">
+                <i data-lucide="x"></i>
+            </button>
+            <div id="modal-content" class="w-full flex-1"></div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // ⚠️ การตั้งค่า Google Sheets API
+        // ==========================================
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbz1AXXgH9FfQ8x_O_E_Z1k_YOUR_APP_SCRIPT_URL_HERE/exec"; 
+        
+        const THAI_MONTHS = [
+            { val: '01', label: 'มกราคม 🌸', short: 'ม.ค.' }, { val: '02', label: 'กุมภาพันธ์ 💝', short: 'ก.พ.' }, 
+            { val: '03', label: 'มีนาคม 🌼', short: 'มี.ค.' }, { val: '04', label: 'เมษายน 🌞', short: 'เม.ย.' }, 
+            { val: '05', label: 'พฤษภาคม 🌿', short: 'พ.ค.' }, { val: '06', label: 'มิถุนายน ☔️', short: 'มิ.ย.' },
+            { val: '07', label: 'กรกฎาคม 🌈', short: 'ก.ค.' }, { val: '08', label: 'สิงหาคม 🌻', short: 'ส.ค.' }, 
+            { val: '09', label: 'กันยายน 🍁', short: 'ก.ย.' }, { val: '10', label: 'ตุลาคม 🎃', short: 'ต.ค.' }, 
+            { val: '11', label: 'พฤศจิกายน ❄️', short: 'พ.ย.' }, { val: '12', label: 'ธันวาคม ⛄️', short: 'ธ.ค.' }
+        ];
+
+        let currentUser = { id: 'u1', username: 'admin_cute', role: 'admin' }; 
+        let usersList = [
+            { id: 'u1', username: 'admin_cute', role: 'admin', status: 'active' },
+            { id: 'u2', username: 'my_roommate', role: 'user', status: 'active' }
+        ];
+
+        const savedUser = localStorage.getItem('user_info') || sessionStorage.getItem('user_info');
+        if (savedUser) currentUser = JSON.parse(savedUser);
+
+        let records = [];
+        let activeTab = 'dashboard';
+        let filterYear = new Date().getFullYear() + 543; 
+        let filterMonth = 'all';
+
+        let qYear = new Date().getFullYear() + 543;
+        let qMonth = 'all';
+        let qSort = 'date_desc';
+        let qMinTotal = '';
+        let qMaxTotal = '';
+
+        let repYear = new Date().getFullYear() + 543;
+        let repPeriod = 'latest3'; 
+        let repMonth = String(new Date().getMonth() + 1).padStart(2, '0');
+
+        let isDrawn = false;
+        let stream = null; 
+        let videoTrack = null;
+        let currentFacingMode = 'environment';
+        let hasTorch = false;
+        let isTorchOn = false;
+        let isPhotoTaken = false;
+        let currentZoom = 1;
+        let activeDropdown = null; 
+        let currentCaptchaAnswer = 0;
+        let scheduleDay = '1';
+        let scheduleHour = '8';
+        let newUserRole = 'user';
+
+        // Scanner Form State
+        let formState = {
+            month: String(new Date().getMonth() + 1).padStart(2, '0'),
+            year: String(new Date().getFullYear() + 543),
+            elecPrev: '', elecCurr: '', elecRate: 8,
+            waterTotal: 150
+        };
+
+        window.onload = async () => {
+            updateProfileUI(); 
+            await fetchRecords();
+            document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
+            setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            document.getElementById('app-container').classList.remove('hidden');
+            renderApp();
+            
+            document.addEventListener('click', (e) => {
+                if (activeDropdown && !e.target.closest('.custom-dropdown')) closeDropdown(activeDropdown);
+            });
+        };
+
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobile-menu-backdrop');
+            if (sidebar.classList.contains('-translate-x-full')) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                backdrop.classList.add('opacity-100', 'pointer-events-auto');
+            } else {
+                closeMobileMenu();
+            }
+        }
+
+        function closeMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('mobile-menu-backdrop');
+            sidebar.classList.add('-translate-x-full');
+            backdrop.classList.add('opacity-0', 'pointer-events-none');
+            backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        }
+
+        function toggleDemoRole() {
+            if(currentUser.role === 'admin') currentUser = usersList[1] || { id: 'u2', username: 'demo_user', role: 'user' };
+            else currentUser = usersList[0] || { id: 'u1', username: 'admin_cute', role: 'admin' };
+            
+            updateProfileUI();
+            if(currentUser.role !== 'admin' && (activeTab === 'scanner' || activeTab === 'users')) changeTab('dashboard');
+            else renderApp(); 
+        }
+
+        function updateProfileUI() {
+            const elUsername = document.getElementById('profile-username');
+            const elRole = document.getElementById('profile-role');
+            const elAvatar = document.getElementById('profile-avatar');
+            const elMobileAvatar = document.getElementById('mobile-profile-avatar');
+
+            const avatarUrl = `https://api.dicebear.com/7.x/adventurer/svg?seed=${currentUser.username}&backgroundColor=b6e3f4,ffdfbf,ffd5dc`;
+
+            if(elUsername) elUsername.innerText = currentUser.username;
+            if(elRole) {
+                elRole.innerText = currentUser.role === 'admin' ? 'แอดมิน (Admin)' : 'ผู้ดูข้อมูล (User)';
+                elRole.className = currentUser.role === 'admin' ? 'text-[10px] font-bold text-pink-500 uppercase mt-0.5' : 'text-[10px] font-bold text-teal-500 uppercase mt-0.5';
+            }
+            if(elAvatar) elAvatar.src = avatarUrl;
+            if(elMobileAvatar) elMobileAvatar.src = avatarUrl;
+
+            const navScanner = document.getElementById('nav-scanner');
+            const navUsers = document.getElementById('nav-users');
+            const fabScanner = document.getElementById('mobile-fab');
+
+            if(currentUser.role === 'admin') {
+                if(navScanner) navScanner.style.display = 'flex';
+                if(navUsers) navUsers.style.display = 'flex';
+                if (activeTab !== 'scanner' && fabScanner) fabScanner.style.display = 'block';
+            } else {
+                if(navScanner) navScanner.style.display = 'none';
+                if(navUsers) navUsers.style.display = 'none';
+                if(fabScanner) fabScanner.style.display = 'none';
+            }
+        }
+
+        function createDropdownHTML(id, options, selectedValue, onSelectCallbackStr, theme = 'pink', icon = null) {
+            const selOpt = options.find(o => String(o.value) === String(selectedValue)) || options[0];
+            const bgHover = theme === 'pink' ? 'hover:bg-pink-50 hover:text-pink-500' : (theme === 'sky' ? 'hover:bg-sky-50 hover:text-sky-600' : 'hover:bg-teal-50 hover:text-teal-600');
+            const textSel = theme === 'pink' ? 'text-pink-500 bg-pink-50' : (theme === 'sky' ? 'text-sky-600 bg-sky-50' : 'text-teal-600 bg-teal-50');
+            const borderCol = theme === 'pink' ? 'border-pink-100' : (theme === 'sky' ? 'border-sky-100' : 'border-teal-100');
+            const ringCol = theme === 'pink' ? 'focus:ring-pink-100' : (theme === 'sky' ? 'focus:ring-sky-100' : 'focus:ring-teal-100');
+            const iconCol = theme === 'pink' ? 'text-pink-400' : (theme === 'sky' ? 'text-sky-500' : 'text-teal-500');
+
+            let listItems = options.map(o => {
+                const isSelected = String(o.value) === String(selectedValue);
+                return `<li class="px-4 py-3 text-sm font-bold text-stone-600 cursor-pointer transition-colors duration-200 rounded-xl mx-1 my-0.5 ${isSelected ? textSel : bgHover} flex items-center justify-between group/item" onclick="handleDropdownSelect('${id}', '${o.value}', '${o.label}', '${onSelectCallbackStr}')"><span>${o.label}</span>${isSelected ? `<i data-lucide="check" width="16" class="${iconCol}"></i>` : ''}</li>`
+            }).join('');
+
+            return `
+                <div class="relative custom-dropdown w-full" id="dd-wrapper-${id}">
+                    <button type="button" onclick="toggleDropdown('${id}')" class="w-full flex items-center justify-between px-4 py-3.5 bg-white border ${borderCol} rounded-2xl text-stone-700 font-bold focus:ring-4 ${ringCol} outline-none transition-all duration-300 shadow-sm hover:shadow-md smooth-expo group">
+                        <div class="flex items-center gap-2.5">${icon ? `<i data-lucide="${icon}" width="18" class="${iconCol}"></i>` : ''}<span id="dd-label-${id}" class="truncate">${selOpt ? selOpt.label : ''}</span></div>
+                        <i data-lucide="chevron-down" width="16" class="text-stone-400 transition-transform duration-300 group-hover:text-stone-600" id="dd-arrow-${id}"></i>
+                    </button>
+                    <div id="dd-menu-${id}" class="absolute z-[100] w-full mt-2 bg-white/95 backdrop-blur-xl rounded-2xl shadow-xl border border-stone-100 overflow-hidden opacity-0 pointer-events-none transform -translate-y-2 transition-all duration-300 smooth-spring">
+                        <ul class="max-h-60 overflow-y-auto custom-scrollbar py-1.5 pb-2">${listItems}</ul>
+                    </div>
+                </div>`;
+        }
+
+        function toggleDropdown(id) {
+            const menu = document.getElementById(`dd-menu-${id}`);
+            const arrow = document.getElementById(`dd-arrow-${id}`);
+            if (activeDropdown && activeDropdown !== id) closeDropdown(activeDropdown);
+            if (menu.classList.contains('opacity-0')) {
+                menu.classList.remove('opacity-0', 'pointer-events-none', '-translate-y-2');
+                if(arrow) arrow.classList.add('rotate-180');
+                activeDropdown = id;
+            } else { closeDropdown(id); }
+        }
+
+        function closeDropdown(id) {
+            const menu = document.getElementById(`dd-menu-${id}`);
+            const arrow = document.getElementById(`dd-arrow-${id}`);
+            if(menu) menu.classList.add('opacity-0', 'pointer-events-none', '-translate-y-2');
+            if(arrow) arrow.classList.remove('rotate-180');
+            if(activeDropdown === id) activeDropdown = null;
+        }
+
+        function handleDropdownSelect(id, value, label, callbackName) {
+            closeDropdown(id);
+            if (typeof window[callbackName] === 'function') window[callbackName](value, label);
+        }
+
+        async function fetchRecords() {
+            try {
+                if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    records = [
+                        { id: '1', month: '01', year: '2569', elecPrev: 1000, elecCurr: 1120, elecUnits: 120, elecRate: 8, elecTotal: 960, waterTotal: 150, total: 1110, date: '2026-01-25' },
+                        { id: '2', month: '02', year: '2569', elecPrev: 1120, elecCurr: 1255, elecUnits: 135, elecRate: 8, elecTotal: 1080, waterTotal: 150, total: 1230, date: '2026-02-25' },
+                        { id: '3', month: '03', year: '2569', elecPrev: 1255, elecCurr: 1400, elecUnits: 145, elecRate: 8, elecTotal: 1160, waterTotal: 150, total: 1310, date: '2026-03-25' },
+                        { id: '4', month: '04', year: '2569', elecPrev: 1400, elecCurr: 1600, elecUnits: 200, elecRate: 8, elecTotal: 1600, waterTotal: 150, total: 1750, date: '2026-04-25' },
+                        { id: '5', month: '03', year: '2568', elecPrev: 800, elecCurr: 900, elecUnits: 100, elecRate: 8, elecTotal: 800, waterTotal: 150, total: 950, date: '2025-03-25' },
+                        { id: '6', month: '04', year: '2568', elecPrev: 900, elecCurr: 1050, elecUnits: 150, elecRate: 8, elecTotal: 1200, waterTotal: 150, total: 1350, date: '2025-04-25' }
+                    ];
+                    return;
+                }
+                const res = await fetch(GOOGLE_SCRIPT_URL);
+                const data = await res.json();
+                records = data;
+            } catch (err) { console.error("Fetch Error:", err); }
+        }
+
+        async function saveRecordToSheet(record) {
+            if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                const index = records.findIndex(r => r.id === record.id);
+                if (index !== -1) records[index] = record; else records.push(record); return; 
+            }
+            const isUpdate = records.some(r => r.id === record.id);
+            const payload = { action: isUpdate ? 'update' : 'save', ...record }; 
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                const index = records.findIndex(r => r.id === record.id);
+                if (index !== -1) records[index] = record; else records.push(record);
+            } catch (err) { alert("เกิดข้อผิดพลาดในการบันทึก"); }
+        }
+
+        async function deleteRecordFromSheet(id) {
+            if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                records = records.filter(r => r.id !== id); return;
+            }
+            try {
+                await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify({ action: 'delete', id: id }), headers: { 'Content-Type': 'text/plain;charset=utf-8' } });
+                records = records.filter(r => r.id !== id);
+            } catch (err) { alert("ลบข้อมูลไม่สำเร็จ"); }
+        }
+
+        function changeTab(tab) {
+            if(currentUser.role !== 'admin' && (tab === 'scanner' || tab === 'users')) { alert("คุณไม่มีสิทธิ์เข้าถึงหน้านี้ 🥺"); return; }
+            activeTab = tab;
+            if(activeTab !== 'scanner' && typeof stopCamera === 'function') stopCamera(); 
+            
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                const isActive = btn.dataset.tab === tab;
+                const spanNode = btn.querySelector('span');
+                const iconNode = btn.querySelector('i, svg'); 
+                
+                if(isActive) {
+                    btn.className = "nav-btn active animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold bg-pink-100 text-pink-600 shadow-sm shadow-pink-100/50 scale-100";
+                    if (spanNode) { spanNode.classList.add('text-pink-500'); spanNode.classList.remove('text-stone-300'); }
+                    if (iconNode) { iconNode.classList.add('text-pink-500'); iconNode.classList.remove('text-stone-300'); }
+                } else {
+                    btn.className = "nav-btn animate-ios-up flex items-center gap-3.5 p-3.5 rounded-2xl transition-all duration-300 smooth-expo active:scale-95 whitespace-nowrap text-sm font-bold text-stone-400 hover:bg-pink-50 hover:text-pink-500 hover:scale-[1.02]";
+                    if (spanNode) { spanNode.classList.remove('text-pink-500'); spanNode.classList.add('text-stone-300'); }
+                    if (iconNode) { iconNode.classList.remove('text-pink-500'); iconNode.classList.add('text-stone-300'); }
+                }
+            });
+
+            closeMobileMenu(); 
+
+            const fab = document.getElementById('mobile-fab');
+            if(fab) fab.style.display = (tab === 'scanner' || currentUser.role !== 'admin') ? 'none' : 'block';
+            renderApp();
+        }
+
+        function renderApp() {
+            const container = document.getElementById('main-content');
+            container.innerHTML = ''; 
+
+            if (activeTab === 'dashboard') {
+                isDrawn = false; container.innerHTML = getDashboardHTML();
+                setTimeout(() => { isDrawn = true; updateChartAnimations(); }, 150);
+            } else if (activeTab === 'scanner') {
+                container.innerHTML = getScannerHTML();
+                if(typeof startCamera === 'function') startCamera(); 
+                setupFormListeners(); autoFillPrevMeter(); 
+            } else if (activeTab === 'data') {
+                container.innerHTML = getDataViewHTML();
+            } else if (activeTab === 'report') {
+                container.innerHTML = getReportHTML();
+            } else if (activeTab === 'users') {
+                container.innerHTML = getUsersHTML();
+            }
+            lucide.createIcons();
+        }
+
+        // ==========================================
+        // 1. DASHBOARD LOGIC (WITH SMART INSIGHTS & YoY)
+        // ==========================================
+        function updateDashSlicerYear(val) { filterYear = val; renderApp(); }
+        function updateDashSlicerMonth(val) { filterMonth = val; renderApp(); }
+
+        function getDashboardMetrics() {
+            const currentYearRecords = records.filter(r => String(r.year) === String(filterYear)).sort((a,b) => a.month - b.month);
+            const prevYearRecords = records.filter(r => String(r.year) === String(Number(filterYear) - 1)).sort((a,b) => a.month - b.month);
+            
+            const dashRecs = currentYearRecords.filter(r => filterMonth === 'all' || r.month === filterMonth);
+            
+            const totalAmount = dashRecs.reduce((sum, r) => sum + Number(r.total), 0);
+            const totalUnits = dashRecs.reduce((sum, r) => sum + Number(r.elecUnits), 0);
+            const totalWater = dashRecs.reduce((sum, r) => sum + Number(r.waterTotal), 0);
+            const totalElec = dashRecs.reduce((sum, r) => sum + Number(r.elecTotal), 0);
+            const elecPercent = totalAmount > 0 ? Math.round((totalElec / totalAmount) * 100) : 0;
+            const waterPercent = totalAmount > 0 ? 100 - elecPercent : 0;
+            const monthlyAverage = dashRecs.length > 0 ? totalAmount / dashRecs.length : 0;
+
+            let pctChangeAmt = 0, pctChangeUn = 0;
+            const targetM = filterMonth !== 'all' ? filterMonth : (currentYearRecords.length > 0 ? currentYearRecords[currentYearRecords.length - 1].month : null);
+            if (targetM) {
+                const curr = records.find(r => String(r.year) === String(filterYear) && r.month === targetM);
+                const prevM = String(Number(targetM) - 1).padStart(2, '0');
+                const prev = records.find(r => String(r.year) === String(filterYear) && r.month === prevM);
+                if (curr && prev && prev.total > 0) {
+                    pctChangeAmt = ((Number(curr.total) - Number(prev.total)) / Number(prev.total)) * 100;
+                    pctChangeUn = ((Number(curr.elecUnits) - Number(prev.elecUnits)) / Number(prev.elecUnits)) * 100;
+                }
+            }
+
+            const chartData = THAI_MONTHS.map(m => {
+                const r = currentYearRecords.find(x => x.month === m.val);
+                const pr = prevYearRecords.find(x => x.month === m.val);
+                return { 
+                    month: m.short, fullMonth: m.label, val: m.val, 
+                    units: r ? Number(r.elecUnits) : 0, 
+                    total: r ? Number(r.total) : 0, 
+                    prevTotal: pr ? Number(pr.total) : 0,
+                    hasData: !!r, hasPrevData: !!pr,
+                    isActive: filterMonth === 'all' || filterMonth === m.val 
+                };
+            });
+
+            const maxUnits = Math.max(...chartData.map(d => d.units), 10);
+            const maxTotal = Math.max(...chartData.map(d => d.total), ...chartData.map(d => d.prevTotal), 10);
+            
+            const highestMonthData = chartData.find(d => d.total === Math.max(...chartData.map(c => c.total)) && d.hasData);
+            const highestMonthVal = highestMonthData ? highestMonthData.val : null;
+            const lowestMonthData = chartData.find(d => d.total === Math.min(...chartData.filter(c => c.hasData).map(c => c.total)) && d.hasData);
+
+            let insights = [];
+            if (dashRecs.length > 0) {
+                if (pctChangeAmt <= -5) {
+                    const trees = Math.max(1, Math.round(Math.abs(pctChangeAmt) / 5));
+                    insights.push(`ว้าว! เดือนล่าสุดประหยัดกว่าเดือนก่อน ${Math.abs(pctChangeAmt).toFixed(1)}% เทียบเท่าปลูกต้นไม้ ${trees} ต้นเลยนะ 🌳`);
+                } else if (pctChangeAmt >= 5) {
+                    insights.push(`เดือนล่าสุดค่าไฟแอบพุ่งขึ้นมา ${pctChangeAmt.toFixed(1)}% 📈 ระวังกระเป๋าตังค์แฟบนะค้าบ`);
+                } else if (pctChangeAmt !== 0) {
+                    insights.push(`เดือนล่าสุดค่าใช้จ่ายใกล้เคียงเดิม ถือว่าคุมงบได้ดี! ✨`);
+                }
+
+                const checkMonth = filterMonth !== 'all' ? filterMonth : (highestMonthData?.val || String(new Date().getMonth() + 1).padStart(2, '0'));
+                if (['03', '04', '05'].includes(checkMonth)) {
+                    insights.push(`☀️ เข้าสู่ฤดูร้อนแล้ว (มี.ค.-พ.ค.) แนวโน้มค่าไฟมักจะสูงขึ้น อย่าลืมล้างแอร์รับซัมเมอร์น้า ❄️`);
+                } else if (['11', '12', '01'].includes(checkMonth)) {
+                    insights.push(`⛄ อากาศเริ่มเย็นแล้ว เปิดหน้าต่างรับลมแทนแอร์ ช่วยประหยัดค่าไฟได้เยอะเลยนะ 🍃`);
+                }
+
+                if (filterMonth === 'all' && lowestMonthData) {
+                    insights.push(`ยอดรวมปีนี้ ฿${totalAmount.toLocaleString()} โดยเดือนที่จ่ายคุ้มค่าที่สุดคือ ${lowestMonthData.fullMonth} (${lowestMonthData.total}฿) 🌸`);
+                }
+            } else {
+                insights.push(`ยังไม่มีข้อมูลบิลในช่างเวลานี้เลยค่ะ รีบมาบันทึกกันเถอะ! ✨`);
+            }
+
+            return { dashRecs, totalAmount, totalUnits, totalWater, totalElec, elecPercent, waterPercent, pctChangeAmt, pctChangeUn, chartData, maxUnits, maxTotal, highestMonthVal, highestMonthData, monthlyAverage, insights };
+        }
+
+        function getTrendLinePoints(chartData, maxTotal, dataKey = 'total') {
+            const svgWidth = 1000, svgHeight = 200, paddingX = 40, stepX = (svgWidth - paddingX * 2) / 11;
+            let points = [];
+            chartData.forEach((d, i) => { 
+                if ((dataKey === 'total' && d.hasData) || (dataKey === 'prevTotal' && d.hasPrevData)) { 
+                    const x = paddingX + (i * stepX); 
+                    const y = svgHeight - 20 - (d[dataKey] / maxTotal) * (svgHeight - 40); 
+                    points.push(`${x},${y}`); 
+                } 
+            });
+            return points.join(' ');
+        }
+
+        function getDashboardHTML() {
+            const m = getDashboardMetrics();
+            let years = [...new Set(records.map(r => String(r.year)))];
+            if(!years.includes(String(filterYear))) years.push(String(filterYear));
+            const yearOpts = years.sort().reverse().map(y => ({ value: y, label: `ปี พ.ศ. ${y} ✨` }));
+            const monthOpts = [{value: 'all', label: 'ดูทุกเดือน 📅'}, ...THAI_MONTHS.map(x => ({ value: x.val, label: x.label }))];
+
+            const insightsHtml = `
+            <div class="bg-gradient-to-r from-pink-100 to-amber-50 rounded-[2rem] p-5 md:p-6 shadow-sm border border-white flex flex-col sm:flex-row items-center gap-4 animate-ios-up relative overflow-hidden group" style="animation-delay: 0.25s">
+                <div class="absolute -right-10 -top-10 w-40 h-40 bg-white/40 rounded-full blur-3xl"></div>
+                <div class="bg-white/80 p-3 md:p-4 rounded-full shadow-sm text-pink-500 z-10 shrink-0 border border-white">
+                    <i data-lucide="sparkles" class="animate-pulse" width="28" height="28"></i>
+                </div>
+                <div class="z-10 flex-1 w-full text-center sm:text-left">
+                    <h4 class="font-extrabold text-stone-700 mb-2 md:mb-3 flex items-center justify-center sm:justify-start gap-2 text-lg">MyRoom Insights 💡</h4>
+                    <div class="flex flex-row flex-wrap justify-center sm:justify-start gap-2 md:gap-3">
+                        ${m.insights.map(msg => `<div class="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl text-xs md:text-sm font-bold text-stone-600 shadow-sm border border-white w-full sm:w-auto text-left">${msg}</div>`).join('')}
+                    </div>
+                </div>
+            </div>`;
+
+            const highestMonthHtml = `
+            <div class="bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-rose-50 flex flex-col justify-between group hover:-translate-y-1 hover:shadow-xl transition-all duration-500 smooth-expo animate-ios-up" style="animation-delay: 0.1s">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="bg-rose-50 p-2.5 md:p-3 rounded-2xl text-rose-400 group-hover:bg-rose-400 group-hover:text-white transition-colors duration-300">
+                        <i data-lucide="flame" width="20" height="20" class="transform group-hover:scale-110 transition-transform duration-300"></i>
+                    </div>
+                    <div class="text-[10px] md:text-xs font-bold px-2 py-1 rounded-full bg-rose-50 text-rose-500">
+                        แพงสุด!
+                    </div>
+                </div>
+                <div>
+                    <p class="text-[11px] md:text-sm font-bold text-stone-400 mb-1">เดือน ${m.highestMonthData?.fullMonth || '-'}</p>
+                    <h3 class="text-2xl md:text-3xl lg:text-4xl font-black text-rose-500 tracking-tight">฿${m.highestMonthData?.total.toLocaleString() || 0}</h3>
+                </div>
+            </div>`;
+
+            const averageHtml = `
+            <div class="bg-gradient-to-br from-sky-100 to-sky-50 p-5 md:p-6 rounded-[2rem] shadow-sm flex flex-col justify-between relative overflow-hidden border border-sky-100/50 group hover:-translate-y-1 hover:shadow-xl transition-all duration-500 smooth-expo animate-ios-up" style="animation-delay: 0.2s">
+                <div class="absolute -right-6 -top-6 w-32 h-32 bg-white/40 rounded-full blur-2xl transform group-hover:scale-150 transition-transform duration-700 ease-out"></div>
+                <div class="flex justify-between items-start mb-4 relative z-10">
+                    <div class="bg-white/60 backdrop-blur-md p-2.5 md:p-3 rounded-2xl text-sky-500 transform group-hover:rotate-12 transition-transform duration-300">
+                        <i data-lucide="calculator" width="20" height="20"></i>
+                    </div>
+                    <div class="text-[10px] md:text-xs font-bold px-2 py-1 rounded-full bg-white/50 text-sky-600 border border-sky-200/50">
+                        จาก ${m.dashRecs.length} เดือน
+                    </div>
+                </div>
+                <div class="relative z-10">
+                    <p class="text-[11px] md:text-sm font-bold text-sky-600/70 mb-1">เฉลี่ยต่อเดือน</p>
+                    <h3 class="text-2xl md:text-3xl lg:text-4xl font-black tracking-tight text-sky-800">฿${Math.round(m.monthlyAverage).toLocaleString()}</h3>
+                </div>
+            </div>`;
+
+            return `
+            <div class="space-y-8 pb-8 pt-14 md:pt-0">
+                <header class="flex flex-col gap-6 animate-ios-up relative z-50" style="animation-delay: 0s">
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">ภาพรวมการใช้งาน 🌷</h2>
+                        <p class="text-stone-500 mt-1 font-medium">สรุปการใช้พลังงานและค่าใช้จ่ายสุดน่ารัก</p>
+                    </div>
+                    <div class="inline-flex flex-wrap items-center gap-3 bg-pink-50/50 p-2.5 rounded-[2rem] border border-pink-100 shadow-sm w-fit backdrop-blur-sm">
+                        <div class="flex items-center gap-2 pl-3 pr-2 text-pink-400"><i data-lucide="filter" width="18" height="18"></i><span class="text-xs font-bold uppercase tracking-wider hidden sm:block">ตัวกรอง</span></div>
+                        <div class="w-40 sm:w-48 relative z-[60]">${createDropdownHTML('dash-year', yearOpts, filterYear, 'updateDashSlicerYear', 'pink', 'calendar-days')}</div>
+                        <div class="w-40 sm:w-48 relative z-[50]">${createDropdownHTML('dash-month', monthOpts, filterMonth, 'updateDashSlicerMonth', 'teal', 'calendar')}</div>
+                    </div>
+                </header>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
+                    ${metricCard('ยอดรวมค่าใช้จ่าย', '฿' + m.totalAmount.toLocaleString(), m.pctChangeAmt, 'pink', 'sparkles', 0.05)}
+                    ${highestMonthHtml}
+                    ${metricCard('หน่วยไฟฟ้าที่ใช้ไป', m.totalUnits.toLocaleString() + ' <span class="text-sm md:text-lg text-stone-400 font-bold">หน่วย</span>', m.pctChangeUn, 'teal', 'zap', 0.15)}
+                    ${averageHtml}
+                </div>
+
+                ${insightsHtml}
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-pink-50 flex flex-col lg:col-span-1 items-center justify-center relative group animate-ios-up hover:shadow-lg transition-shadow duration-500 overflow-hidden" style="animation-delay: 0.3s">
+                        <button onclick="openModal('pie')" class="absolute top-6 right-6 p-2.5 bg-pink-50 text-pink-400 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-pink-100 hover:scale-110 active:scale-90 z-10" title="ขยายกราฟ"><i data-lucide="maximize-2" width="18"></i></button>
+                        <div class="w-full mb-6">
+                            <h3 class="text-lg font-extrabold text-stone-700 flex items-center gap-2"><i data-lucide="pie-chart" width="20" class="text-pink-400"></i> สัดส่วนค่าใช้จ่าย</h3>
+                            <p class="text-sm text-stone-400 font-medium">เปอร์เซ็นต์ค่าไฟ vs น้ำ ⚡️</p>
+                        </div>
+                        ${m.dashRecs.length > 0 ? getDonutSVG(m.elecPercent, m.totalElec, m.totalWater, m.waterPercent, false) : '<div class="flex-1 flex items-center text-stone-300 font-bold pb-10">ไม่มีข้อมูล 🥺</div>'}
+                    </div>
+
+                    <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-pink-50 flex flex-col lg:col-span-2 relative group animate-ios-up hover:shadow-lg transition-shadow duration-500" style="animation-delay: 0.35s">
+                        <button onclick="openModal('line')" class="absolute top-6 right-6 p-2.5 bg-teal-50 text-teal-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-teal-100 hover:scale-110 active:scale-90 z-10" title="ขยายกราฟ"><i data-lucide="maximize-2" width="18"></i></button>
+                        <div class="flex justify-between items-start md:items-end mb-2 flex-col md:flex-row gap-4">
+                            <div>
+                                <h3 class="text-lg font-extrabold text-stone-700 flex items-center gap-2"><i data-lucide="line-chart" width="20" class="text-pink-400"></i> เทียบปีต่อปี (YoY Trend)</h3>
+                                <p class="text-sm text-stone-400 font-medium">เปรียบเทียบยอดรวมกับปีที่แล้ว 📈</p>
+                            </div>
+                            <div class="flex items-center gap-4 text-xs font-bold text-stone-500 bg-stone-50 px-4 py-2 rounded-2xl md:mr-12 shadow-sm border border-stone-100">
+                               <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-slate-300"></div> ปี ${Number(filterYear)-1}</div>
+                               <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-pink-400"></div> ปี ${filterYear}</div>
+                            </div>
+                        </div>
+                        ${getLineChartHTML(m.chartData, m.maxTotal, false, m.highestMonthVal)}
+                    </div>
+                </div>
+
+                <div class="bg-white p-7 rounded-[2.5rem] shadow-sm border border-pink-50 flex flex-col relative group animate-ios-up hover:shadow-lg transition-shadow duration-500" style="animation-delay: 0.4s">
+                    <button onclick="openModal('bar')" class="absolute top-6 right-6 p-2.5 bg-sky-50 text-sky-500 rounded-full opacity-0 group-hover:opacity-100 transition-all duration-300 hover:bg-sky-100 hover:scale-110 z-10" title="ขยายกราฟ"><i data-lucide="maximize-2" width="18"></i></button>
+                    <div class="flex justify-between items-start md:items-end mb-8 flex-col md:flex-row gap-4">
+                        <div>
+                            <h3 class="text-lg font-extrabold text-stone-700 flex items-center gap-2"><i data-lucide="bar-chart-3" width="20" class="text-teal-500"></i> เปรียบเทียบหน่วยไฟ / ค่าใช้จ่าย</h3>
+                            <p class="text-sm text-stone-400 font-medium">ดูพฤติกรรมการใช้ไฟ (เขียว) เทียบกับเงิน (ชมพู) 📊</p>
+                        </div>
+                        <div class="flex items-center gap-4 text-xs font-bold text-stone-500 bg-stone-50 px-4 py-2 rounded-2xl md:mr-12 shadow-sm border border-stone-100">
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-teal-300"></div> หน่วยไฟ</div>
+                            <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-pink-300"></div> เงินรวม</div>
+                            <div class="flex items-center gap-2 ml-2"><div class="w-3 h-3 rounded-full bg-rose-500 animate-pulse"></div> แพงสุด 🔥</div>
+                        </div>
+                    </div>
+                    ${getBarChartHTML(m.chartData, m.maxUnits, m.maxTotal, false, m.highestMonthVal)}
+                </div>
+            </div>`;
+        }
+
+        function metricCard(title, valueStr, pct, color, icon, delay) {
+            const bgLight = color==='pink'?'bg-pink-50':'bg-teal-50';
+            const textCol = color==='pink'?'text-pink-400':'text-teal-400';
+            let pctHtml = '';
+            if(pct !== 0) {
+                const isUp = pct > 0;
+                const pBg = isUp ? 'bg-orange-50 text-orange-500' : 'bg-teal-50 text-teal-500';
+                const pIco = isUp ? 'trending-up' : 'trending-down';
+                pctHtml = `<div class="flex items-center gap-1 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm ${pBg}"><i data-lucide="${pIco}" width="14"></i>${Math.abs(pct).toFixed(1)}% (MoM)</div>`;
+            }
+            return `
+            <div class="bg-white p-5 md:p-6 rounded-[2rem] shadow-sm border border-pink-50 flex flex-col justify-between group hover:-translate-y-1 hover:shadow-xl transition-all duration-500 smooth-expo animate-ios-up" style="animation-delay: ${delay}s">
+                <div class="flex justify-between items-start mb-4">
+                    <div class="${bgLight} p-2.5 md:p-3 rounded-2xl ${textCol} group-hover:bg-${color}-400 group-hover:text-white transition-colors duration-300">
+                        <i data-lucide="${icon}" width="20" height="20" class="transform group-hover:rotate-12 transition-transform duration-300"></i>
+                    </div>
+                    ${pctHtml}
+                </div>
+                <div>
+                    <p class="text-[11px] md:text-sm font-bold text-stone-400 mb-1">${title}</p>
+                    <h3 class="text-2xl md:text-3xl lg:text-4xl font-black text-stone-700 tracking-tight">${valueStr}</h3>
+                </div>
+            </div>`;
+        }
+
+        function getDonutSVG(elecPercent, totalElec, totalWater, waterPercent, isExpanded) {
+            const sizeClasses = isExpanded ? 'w-64 h-64 md:w-80 md:h-80 scale-100' : 'w-48 h-48 hover:scale-105';
+            const offset = isDrawn || isExpanded ? (251.2 - (251.2 * elecPercent) / 100) : 251.2;
+            const delayCls = (isDrawn || isExpanded) ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4';
+            return `
+            <div class="flex flex-col items-center justify-center w-full h-full">
+                <div class="relative flex items-center justify-center transition-transform duration-500 smooth-spring ${sizeClasses}">
+                    <svg viewBox="0 0 100 100" class="w-full h-full transform -rotate-90 drop-shadow-md">
+                        <circle cx="50" cy="50" r="40" fill="transparent" stroke="#f1f5f9" stroke-width="12" />
+                        <circle id="donut-circle" cx="50" cy="50" r="40" fill="transparent" stroke="#f472b6" stroke-width="12" stroke-dasharray="251.2" stroke-dashoffset="${offset}" stroke-linecap="round" class="transition-all duration-[1500ms] smooth-expo" />
+                    </svg>
+                    <div class="absolute inset-0 flex flex-col items-center justify-center transition-all duration-1000 smooth-expo ${(isDrawn||isExpanded)?'opacity-100 scale-100':'opacity-0 scale-90'}">
+                        <span class="${isExpanded?'text-6xl':'text-4xl'} font-black text-pink-500">${elecPercent}%</span>
+                        <span class="${isExpanded?'text-lg mt-2':'text-xs mt-1'} font-bold text-stone-400">ค่าไฟ</span>
+                    </div>
+                </div>
+                <div class="flex justify-center gap-6 w-full bg-stone-50 rounded-2xl transition-all duration-700 smooth-expo delay-300 ${delayCls} ${isExpanded?'mt-10 p-6 max-w-sm':'mt-6 p-4'} border border-stone-100">
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="flex items-center gap-2 font-bold text-stone-600 ${isExpanded?'text-lg':'text-sm'}"><div class="w-3 h-3 rounded-full bg-pink-400"></div> ค่าไฟ</div>
+                        <span class="font-bold text-stone-400 ${isExpanded?'text-lg':'text-xs'}">฿${totalElec.toLocaleString()}</span>
+                    </div>
+                    <div class="flex flex-col items-center gap-1">
+                        <div class="flex items-center gap-2 font-bold text-stone-600 ${isExpanded?'text-lg':'text-sm'}"><div class="w-3 h-3 rounded-full bg-slate-200"></div> ค่าน้ำ</div>
+                        <span class="font-bold text-stone-400 ${isExpanded?'text-lg':'text-xs'}">฿${totalWater.toLocaleString()} (${waterPercent}%)</span>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function getLineChartHTML(chartData, maxTotal, isExpanded, highestMonthVal) {
+            const hCls = isExpanded ? 'h-[400px] md:h-[500px]' : 'h-[240px]';
+            const ptsCurrent = getTrendLinePoints(chartData, maxTotal, 'total');
+            const ptsPrev = getTrendLinePoints(chartData, maxTotal, 'prevTotal');
+            let gridHtml = [0,1,2].map(i => `<line x1="0" y1="${20+(i*70)}" x2="1000" y2="${20+(i*70)}" stroke="#f8fafc" stroke-width="2" stroke-dasharray="6 6" />`).join('');
+            
+            let pointsHtml = chartData.map((d, i) => {
+                if(!d.hasData) return '';
+                const x = 40 + (i * (920 / 11)); const y = 200 - 20 - (d.total / maxTotal) * 160;
+                const oCls = (isDrawn || isExpanded) ? 'opacity-100' : 'opacity-0';
+                const isHighest = d.val === highestMonthVal && d.hasData;
+                const circleStroke = isHighest ? '#f43f5e' : '#f472b6';
+                const circleClass = isHighest ? 'shadow-sm animate-pulse' : 'shadow-sm';
+
+                return `<g class="group hover:scale-[1.3] transition-all duration-500 smooth-spring origin-center cursor-pointer ${oCls}" style="transform-origin: ${x}px ${y}px; transition-delay: ${(isDrawn||isExpanded)?i*50:0}ms">
+                    <circle cx="${x}" cy="${y}" r="${isExpanded?12:8}" fill="#fff" stroke="${circleStroke}" stroke-width="${isExpanded?6:4}" class="${circleClass} pointer-events-auto" />
+                    <text x="${x}" y="${y-(isExpanded?30:20)}" text-anchor="middle" fill="${isHighest ? '#f43f5e' : '#f472b6'}" font-size="${isExpanded?24:16}" font-weight="bold" class="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 drop-shadow-sm pointer-events-none">฿${d.total}</text>
+                </g>`;
+            }).join('');
+
+            let labelsHtml = chartData.map(d => `<span class="text-[10px] md:text-sm font-bold transition-all duration-300 ${d.hasData && d.isActive ? 'text-pink-500 bg-pink-50 px-2 py-1 rounded-lg scale-110' : (d.hasData ? 'text-stone-500' : 'text-stone-300')}">${d.month}</span>`).join('');
+
+            const lineOp = (isDrawn || isExpanded) ? 'opacity-100 stroke-dashoffset-0' : 'opacity-0';
+            const prevLineOp = (isDrawn || isExpanded) ? 'opacity-60 stroke-dashoffset-0' : 'opacity-0';
+            
+            return `
+            <div class="w-full relative group flex flex-col ${hCls}">
+                <div class="absolute left-0 top-0 bottom-6 flex flex-col justify-between text-[10px] text-stone-300 font-bold z-0 pb-4 pointer-events-none">
+                    <span>฿${maxTotal}</span><span>฿${Math.round(maxTotal/2)}</span><span>0</span>
+                </div>
+                <svg viewBox="0 0 1000 200" class="w-full flex-1 overflow-visible ml-6 mt-4 pointer-events-none" preserveAspectRatio="none">
+                    ${gridHtml}
+                    <polyline points="${ptsPrev}" fill="none" stroke="#cbd5e1" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="transition-all duration-[1500ms] smooth-expo ${prevLineOp}" style="stroke-dasharray: 2000; stroke-dashoffset: ${(isDrawn||isExpanded)?0:2000}" />
+                    <polyline points="${ptsCurrent}" fill="none" stroke="#f472b6" stroke-width="5" stroke-linecap="round" stroke-linejoin="round" class="transition-all duration-[1500ms] smooth-expo drop-shadow-sm ${lineOp}" style="stroke-dasharray: 2000; stroke-dashoffset: ${(isDrawn||isExpanded)?0:2000}" />
+                    ${pointsHtml}
+                </svg>
+                <div class="flex justify-between items-end h-8 ml-6 px-1 mt-4 transition-opacity duration-700 delay-300 ${(isDrawn||isExpanded)?'opacity-100':'opacity-0'} pointer-events-none">
+                    ${labelsHtml}
+                </div>
+            </div>`;
+        }
+
+        function getBarChartHTML(chartData, maxUnits, maxTotal, isExpanded, highestMonthVal) {
+            const hCls = isExpanded ? 'h-[400px] md:h-[500px]' : 'h-[260px]';
+            const innerH = isExpanded ? 'h-[320px] md:h-[400px]' : 'h-[220px]';
+            const wCls = isExpanded ? 'w-6 sm:w-8 lg:w-12' : 'w-3 sm:w-5 lg:w-9';
+            
+            let barsHtml = chartData.map((d, idx) => {
+                const uH = d.hasData ? Math.max((d.units / maxUnits) * 100, 4) : 0; 
+                const tH = d.hasData ? Math.max((d.total / maxTotal) * 100, 4) : 0; 
+                const activeCls = d.isActive ? 'opacity-100 hover:scale-105' : 'opacity-40';
+                
+                const isHighest = d.val === highestMonthVal && d.hasData;
+                const totalBarColor = isHighest ? 'bg-rose-400 group-hover:bg-rose-500 shadow-rose-200' : 'bg-pink-300 group-hover:bg-pink-400';
+                const highlightIcon = (isHighest && (isDrawn||isExpanded)) ? `<div class="absolute -top-10 text-xl md:text-2xl animate-bounce drop-shadow-sm pointer-events-none transition-all duration-300" title="เดือนที่แพงที่สุด">🔥</div>` : '';
+
+                let tooltip = d.hasData ? `<div class="opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 smooth-spring absolute ${isExpanded?'-top-20':'-top-16'} left-1/2 -translate-x-1/2 bg-white border border-pink-100 text-stone-600 text-xs py-2 px-4 rounded-2xl pointer-events-none whitespace-nowrap z-30 shadow-xl shadow-pink-100/50 flex flex-col items-center gap-1 transform scale-90 group-hover:scale-100"><span class="font-extrabold text-pink-400 ${isExpanded?'text-base':''}">${d.fullMonth}</span><div class="flex gap-4 ${isExpanded?'text-sm':''}"><span class="text-teal-500 font-bold">${d.units} หน่วย</span><span class="text-pink-500 font-bold">฿${d.total.toLocaleString()}</span></div></div>` : '';
+
+                return `
+                <div class="flex-1 flex flex-col items-center justify-end h-full relative group z-10 hover:z-[100] transition-all duration-500 smooth-expo ${activeCls}">
+                    ${tooltip}
+                    ${highlightIcon}
+                    <div class="w-full flex items-end justify-center gap-0.5 sm:gap-1.5 ${innerH}">
+                        <div class="rounded-t-full transition-all duration-[1200ms] smooth-expo shadow-sm ${wCls} ${d.hasData?'bg-teal-300 group-hover:bg-teal-400':'bg-transparent'}" style="height: ${(isDrawn||isExpanded)?uH:0}%; transition-delay: ${idx*30}ms"></div>
+                        <div class="rounded-t-full transition-all duration-[1200ms] smooth-expo shadow-sm ${wCls} ${d.hasData?totalBarColor:'bg-transparent'}" style="height: ${(isDrawn||isExpanded)?tH:0}%; transition-delay: ${(idx*30)+100}ms"></div>
+                    </div>
+                    <span class="text-[10px] md:text-xs font-bold mt-4 transition-all duration-500 delay-500 ${(isDrawn||isExpanded)?'opacity-100':'opacity-0'} ${d.hasData&&d.isActive?(isHighest?'text-rose-600 bg-rose-50':'text-stone-600 bg-stone-100')+' px-2 py-1 rounded-full':'text-stone-300'}">${d.month}</span>
+                </div>`;
+            }).join('');
+
+            return `
+            <div class="w-full flex items-end gap-1.5 md:gap-4 relative border-b-2 border-stone-50 pb-2 mt-4 ${hCls}">
+                <div class="absolute inset-0 flex flex-col justify-between pointer-events-none pb-8 z-0">
+                    <div class="border-t border-stone-50 w-full"></div><div class="border-t border-stone-50 w-full"></div>
+                    <div class="border-t border-stone-50 w-full"></div><div class="border-t border-stone-50 w-full"></div>
+                </div>
+                ${barsHtml}
+            </div>`;
+        }
+
+        function updateChartAnimations() { document.getElementById('main-content').innerHTML = getDashboardHTML(); lucide.createIcons(); }
+
+        // ==========================================
+        // 2. SCANNER / FORM LOGIC 
+        // ==========================================
+        function updateFormMonth(val, label) { formState.month = val; document.getElementById('dd-label-form-month').innerText = label; autoFillPrevMeter(); }
+        function updateFormYear(val, label) { formState.year = val; document.getElementById('dd-label-form-year').innerText = label; autoFillPrevMeter(); }
+
+        function getScannerHTML() {
+            const units = (Number(formState.elecCurr)||0) - (Number(formState.elecPrev)||0);
+            const elecTot = units > 0 ? units * formState.elecRate : 0;
+            const waterTot = Number(formState.waterTotal) || 0; // ยืดหยุ่นค่าน้ำ
+            const grandTot = elecTot + waterTot;
+
+            let years = [];
+            for(let i = 0; i < 5; i++) { years.push(String(new Date().getFullYear() + 543 - i)); }
+            const yearOpts = years.map(y => ({ value: y, label: `ปี พ.ศ. ${y} ✨` }));
+            const monthOpts = THAI_MONTHS.map(m => ({ value: m.val, label: m.label }));
+
+            return `
+            <div class="max-w-5xl mx-auto pb-8 pt-14 md:pt-0">
+                <header class="mb-8 text-center md:text-left animate-ios-up">
+                    <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">บันทึกบิลห้องพัก 📸</h2>
+                    <p class="text-stone-500 mt-1 font-medium">ระบบกล้องสแกนความละเอียดสูง พร้อมตัวช่วยซูมดูเลข ✨</p>
+                </header>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
+                    <div class="flex flex-col gap-4 animate-ios-up" style="animation-delay: 0.1s">
+                        <div class="bg-stone-900 rounded-[2.5rem] overflow-hidden shadow-lg border-4 border-white relative w-full aspect-[3/4] md:aspect-[4/5] flex items-center justify-center group" id="cam-container">
+                            <video id="cam-video" autoplay playsinline class="w-full h-full object-cover ${isPhotoTaken?'hidden':''}"></video>
+                            <div id="preview-scroll-area" class="w-full h-full overflow-auto no-scrollbar scroll-smooth ${isPhotoTaken?'':'hidden'}">
+                                <img id="cam-preview" class="w-full h-full object-contain origin-top-left transition-all duration-200" style="min-width: 100%; min-height: 100%;" />
+                            </div>
+                            <canvas id="cam-canvas" class="hidden"></canvas>
+                            
+                            <div id="cam-overlay" class="absolute inset-4 border-2 border-white/30 rounded-2xl pointer-events-none flex flex-col items-center justify-center ${isPhotoTaken?'hidden':''}">
+                                <div class="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-pink-400 rounded-tl-xl"></div>
+                                <div class="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-pink-400 rounded-tr-xl"></div>
+                                <div class="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-pink-400 rounded-bl-xl"></div>
+                                <div class="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-pink-400 rounded-br-xl"></div>
+                                <div class="laser-line"></div>
+                                <span class="bg-black/50 text-white font-bold text-xs px-4 py-2 rounded-full backdrop-blur-md shadow-sm relative z-30">วางบิลให้อยู่ในกรอบ</span>
+                            </div>
+
+                            <div class="absolute top-4 left-4 right-4 flex justify-between items-center z-40 ${isPhotoTaken?'hidden':''}" id="cam-top-controls">
+                                <button onclick="toggleTorch()" id="btn-torch" class="p-3 bg-black/40 text-white rounded-full backdrop-blur-md hover:bg-black/60 transition-colors hidden"><i data-lucide="flashlight" id="icon-torch" width="20"></i></button>
+                                <button onclick="switchCamera()" class="p-3 bg-black/40 text-white rounded-full backdrop-blur-md hover:bg-black/60 transition-colors ml-auto"><i data-lucide="switch-camera" width="20"></i></button>
+                            </div>
+                            
+                            <div class="absolute bottom-6 left-1/2 -translate-x-1/2 z-40 ${isPhotoTaken?'hidden':''}" id="cam-btn-cap">
+                                <div class="w-20 h-20 rounded-full border-4 border-white/50 flex items-center justify-center p-1">
+                                    <button onclick="takePhoto()" type="button" class="w-full h-full bg-white rounded-full shadow-lg active:scale-90 transition-transform duration-200"></button>
+                                </div>
+                            </div>
+                            
+                            <div class="absolute top-4 right-4 z-40 ${isPhotoTaken?'':'hidden'}" id="cam-btn-retake">
+                                <button onclick="retakePhoto()" type="button" class="bg-black/50 backdrop-blur-xl text-white px-5 py-2.5 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-black/70 active:scale-95 shadow-lg border border-white/20"><i data-lucide="refresh-cw" width="16"></i> ถ่ายใหม่</button>
+                            </div>
+
+                            <div id="cam-zoom-controls" class="absolute bottom-6 left-1/2 -translate-x-1/2 w-4/5 max-w-[250px] bg-white/90 backdrop-blur-xl px-5 py-3 rounded-full flex items-center gap-3 shadow-xl border border-white/50 z-40 animate-ios-up ${isPhotoTaken?'':'hidden'}">
+                                <i data-lucide="zoom-out" width="18" class="text-stone-400"></i>
+                                <input type="range" id="zoom-slider" min="1" max="3" step="0.1" value="1" class="w-full h-1 bg-stone-200 rounded-lg appearance-none cursor-pointer outline-none" oninput="updateZoom(this.value)">
+                                <i data-lucide="zoom-in" width="18" class="text-stone-600"></i>
+                            </div>
+                        </div>
+                        <div class="bg-teal-50 border border-teal-100 rounded-3xl p-5 text-sm text-teal-700 flex gap-3 shadow-sm hover:shadow-md transition-shadow duration-300">
+                            <div class="mt-0.5"><i data-lucide="sparkles" width="18" class="text-teal-400"></i></div>
+                            <p class="leading-relaxed font-medium"><strong>ทริคการใช้งาน:</strong> ถ่ายภาพแล้วสามารถ <u>เลื่อนแถบซูมด้านล่าง</u> และใช้นิ้วเลื่อนดูเลขบนบิลได้ชัดเจนขึ้น ระบบจะดึงเลขเดือนที่แล้วมาให้เพื่อความไว! 💖</p>
+                        </div>
+                    </div>
+
+                    <div class="transition-all duration-700 smooth-expo ${isPhotoTaken?'opacity-100':'opacity-40 pointer-events-none lg:opacity-100 lg:pointer-events-auto'} animate-ios-up" id="form-container" style="animation-delay: 0.2s">
+                        <div class="bg-white p-6 md:p-8 rounded-[2.5rem] shadow-sm hover:shadow-lg transition-shadow duration-500 border border-pink-50 relative">
+                            <div class="absolute top-0 right-0 w-32 h-32 bg-pink-50 rounded-bl-[4rem] rounded-tr-[2.5rem] opacity-50 pointer-events-none"></div>
+                            <h3 class="text-xl font-extrabold text-stone-700 mb-6 flex items-center gap-2 relative z-10"><i data-lucide="file-spreadsheet" class="text-pink-400"></i> ข้อมูลบิล</h3>
+                            <form id="entry-form" onsubmit="submitForm(event)" class="space-y-5 relative z-10">
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-50">
+                                    <div class="flex flex-col gap-1.5 relative z-[60]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ประจำเดือน</label>${createDropdownHTML('form-month', monthOpts, formState.month, 'updateFormMonth', 'pink')}</div>
+                                    <div class="flex flex-col gap-1.5 relative z-[50]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ปี พ.ศ.</label>${createDropdownHTML('form-year', yearOpts, formState.year, 'updateFormYear', 'pink')}</div>
+                                </div>
+                                <div class="bg-white rounded-[2rem] p-5 md:p-6 border border-amber-100 shadow-sm hover:shadow-md transition-shadow duration-300 relative z-10 mt-2">
+                                    <div class="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 mb-5">
+                                        <h4 class="font-extrabold text-stone-700 flex items-center gap-2 text-lg"><div class="p-2 bg-amber-50 rounded-xl"><i data-lucide="zap" width="18" class="text-amber-400 fill-amber-400"></i></div> ค่าไฟฟ้า</h4>
+                                        <div class="flex items-center gap-2 text-xs bg-stone-50 px-3 py-2 rounded-xl border border-stone-100">
+                                            <span class="text-stone-500 font-bold">หน่วยละ</span>
+                                            <input type="number" id="f-rate" value="${formState.elecRate}" class="w-14 bg-transparent text-center font-black text-amber-500 outline-none border-b-2 border-stone-200 focus:border-amber-400 transition-colors" oninput="updateCalc()">
+                                            <span class="text-stone-500 font-bold">บ.</span>
+                                        </div>
+                                    </div>
+                                    <div class="grid grid-cols-2 gap-4 mb-5">
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1.5 px-1"><label class="text-xs font-bold text-stone-500">จดครั้งก่อน</label><div id="auto-fill-hint" class="bg-teal-100 text-teal-600 text-[10px] font-bold px-2 py-0.5 rounded-full hidden items-center gap-1 border border-teal-200 shadow-sm animate-ios-pop"><i data-lucide="sparkles" width="10"></i> อัตโนมัติ</div></div>
+                                            <input type="number" id="f-prev" value="${formState.elecPrev}" required placeholder="เช่น 1200" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-amber-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-amber-200 shadow-inner" oninput="updateCalc()">
+                                        </div>
+                                        <div>
+                                            <div class="flex justify-between items-center mb-1.5 px-1"><label class="text-xs font-bold text-stone-500">จดครั้งนี้</label></div>
+                                            <input type="number" id="f-curr" value="${formState.elecCurr}" required placeholder="เช่น 1350" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-amber-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-amber-200 shadow-inner" oninput="updateCalc()">
+                                        </div>
+                                    </div>
+                                    <div class="bg-amber-50/50 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-2 border border-amber-100">
+                                        <div><span class="text-amber-600/70 font-bold text-sm">ใช้ไป </span><span id="calc-units" class="font-black text-amber-500 text-xl transition-all">${units>0?units:0}</span><span class="text-amber-600/70 font-bold text-sm"> หน่วย</span></div>
+                                        <div class="text-right"><span class="text-amber-600/70 font-bold text-sm">รวมไฟ </span><span id="calc-elec" class="font-black text-amber-500 text-xl transition-all">฿${elecTot.toLocaleString()}</span></div>
+                                    </div>
+                                </div>
+                                <div class="bg-gradient-to-r from-sky-50 to-white rounded-[2rem] p-5 md:p-6 border border-sky-100 flex justify-between items-center shadow-sm hover:shadow-md transition-shadow duration-300 relative z-10">
+                                    <div class="flex items-center gap-4">
+                                        <div class="bg-white p-3 rounded-2xl text-sky-400 shadow-sm border border-sky-50"><i data-lucide="droplets" width="24"></i></div>
+                                        <div><h4 class="font-extrabold text-stone-700 text-lg">ค่าน้ำประปา</h4><p class="text-[10px] sm:text-xs text-sky-500 font-bold uppercase tracking-wider bg-sky-100/50 px-2 py-0.5 rounded-md inline-block mt-1">ปรับค่าได้ตามจริง</p></div>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-xs bg-white px-3 py-2 rounded-xl shadow-sm border border-sky-100">
+                                        <span class="text-stone-500 font-bold">฿</span>
+                                        <input type="number" id="f-water" value="${formState.waterTotal}" class="w-16 bg-transparent text-center font-black text-sky-500 outline-none border-b-2 border-stone-100 focus:border-sky-400 transition-colors" oninput="updateCalc()">
+                                    </div>
+                                </div>
+                                <div class="pt-4 relative z-10">
+                                    <div class="flex justify-between items-end mb-6 bg-pink-50/50 p-5 rounded-3xl border border-pink-100">
+                                        <span class="text-stone-500 font-extrabold uppercase tracking-wider text-sm">ยอดชำระสุทธิ</span>
+                                        <span id="calc-grand" class="text-4xl sm:text-5xl font-black text-pink-500 tracking-tight transition-all drop-shadow-sm">฿${grandTot.toLocaleString()}</span>
+                                    </div>
+                                    <button type="submit" id="btn-save" class="w-full bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 sm:py-5 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
+                                        <i data-lucide="check-circle-2" width="24"></i> <span id="btn-save-text">บันทึกข้อมูล ✨</span>
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function startCamera() {
+            try {
+                if (stream) stopCamera();
+                const constraints = { video: { facingMode: currentFacingMode, width: { ideal: 1920 }, height: { ideal: 1080 } } };
+                stream = await navigator.mediaDevices.getUserMedia(constraints);
+                const video = document.getElementById('cam-video');
+                if(video) video.srcObject = stream;
+
+                videoTrack = stream.getVideoTracks()[0];
+                const capabilities = videoTrack.getCapabilities();
+                hasTorch = !!capabilities.torch;
+                
+                const btnTorch = document.getElementById('btn-torch');
+                if (btnTorch) {
+                    if (hasTorch && currentFacingMode === 'environment') btnTorch.classList.remove('hidden');
+                    else { btnTorch.classList.add('hidden'); isTorchOn = false; }
+                }
+            } catch (err) { 
+                console.log("Camera error", err);
+                if(err.name === 'OverconstrainedError' || err.name === 'ConstraintNotSatisfiedError') {
+                    try {
+                        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+                        const video = document.getElementById('cam-video');
+                        if(video) video.srcObject = stream;
+                    } catch(e) {}
+                }
+            }
+        }
+
+        function stopCamera() {
+            if (stream) { stream.getTracks().forEach(track => track.stop()); stream = null; videoTrack = null; }
+            isTorchOn = false;
+        }
+
+        async function toggleTorch() {
+            if (videoTrack && hasTorch) {
+                isTorchOn = !isTorchOn;
+                try {
+                    await videoTrack.applyConstraints({ advanced: [{ torch: isTorchOn }] });
+                    const icon = document.getElementById('icon-torch');
+                    if (icon) {
+                        if (isTorchOn) icon.classList.add('text-yellow-400', 'fill-yellow-400');
+                        else icon.classList.remove('text-yellow-400', 'fill-yellow-400');
+                    }
+                } catch (e) { console.log("Torch error", e); }
+            }
+        }
+
+        function switchCamera() { currentFacingMode = currentFacingMode === 'environment' ? 'user' : 'environment'; startCamera(); }
+
+        function takePhoto() {
+            const video = document.getElementById('cam-video');
+            const canvas = document.getElementById('cam-canvas');
+            const preview = document.getElementById('cam-preview');
+            
+            if(video && canvas && video.readyState === video.HAVE_ENOUGH_DATA) {
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.filter = 'contrast(1.15) brightness(1.05)';
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+                
+                preview.src = canvas.toDataURL('image/jpeg', 0.9);
+                isPhotoTaken = true; currentZoom = 1;
+                
+                if(document.getElementById('zoom-slider')) document.getElementById('zoom-slider').value = 1;
+                updateZoom(1); stopCamera(); updateCamUI();
+            }
+        }
+
+        function retakePhoto() { isPhotoTaken = false; startCamera(); updateCamUI(); }
+
+        function updateZoom(val) {
+            currentZoom = val;
+            const img = document.getElementById('cam-preview');
+            if (img) { img.style.width = `${val * 100}%`; img.style.height = `${val * 100}%`; }
+        }
+
+        function updateCamUI() {
+            const elCamVideo = document.getElementById('cam-video');
+            const elPreviewArea = document.getElementById('preview-scroll-area');
+            const elOverlay = document.getElementById('cam-overlay');
+            const elBtnCap = document.getElementById('cam-btn-cap');
+            const elTopCtrl = document.getElementById('cam-top-controls');
+            const elBtnRetake = document.getElementById('cam-btn-retake');
+            const elZoomCtrl = document.getElementById('cam-zoom-controls');
+            const formC = document.getElementById('form-container');
+
+            if(elCamVideo) elCamVideo.classList.toggle('hidden', isPhotoTaken);
+            if(elPreviewArea) elPreviewArea.classList.toggle('hidden', !isPhotoTaken);
+            if(elOverlay) elOverlay.classList.toggle('hidden', isPhotoTaken);
+            if(elBtnCap) elBtnCap.classList.toggle('hidden', isPhotoTaken);
+            if(elTopCtrl) elTopCtrl.classList.toggle('hidden', isPhotoTaken);
+            if(elBtnRetake) elBtnRetake.classList.toggle('hidden', !isPhotoTaken);
+            if(elZoomCtrl) elZoomCtrl.classList.toggle('hidden', !isPhotoTaken);
+            
+            if(formC) {
+                if(isPhotoTaken) { formC.classList.remove('opacity-40','pointer-events-none'); formC.classList.add('opacity-100'); } 
+                else { formC.classList.add('opacity-40','pointer-events-none'); formC.classList.remove('opacity-100'); }
+            }
+        }
+
+        function setupFormListeners() {
+            const btnP = document.getElementById('f-prev');
+            const btnC = document.getElementById('f-curr');
+            const btnR = document.getElementById('f-rate');
+            const btnW = document.getElementById('f-water');
+            if(btnP) btnP.addEventListener('input', updateCalc);
+            if(btnC) btnC.addEventListener('input', updateCalc);
+            if(btnR) btnR.addEventListener('input', updateCalc);
+            if(btnW) btnW.addEventListener('input', updateCalc);
+        }
+
+        function autoFillPrevMeter() {
+            let prevM = Number(formState.month) - 1;
+            let prevY = Number(formState.year);
+            if(prevM === 0) { prevM = 12; prevY -= 1; }
+            const prevMStr = String(prevM).padStart(2, '0');
+            
+            const prevRec = records.find(r => r.month === prevMStr && r.year === String(prevY));
+            const prevInput = document.getElementById('f-prev');
+            const hint = document.getElementById('auto-fill-hint');
+            
+            if(prevRec && prevInput) {
+                prevInput.value = prevRec.elecCurr;
+                formState.elecPrev = prevRec.elecCurr;
+                if(hint) { hint.classList.remove('hidden'); hint.classList.add('flex'); hint.classList.remove('animate-ios-pop'); void hint.offsetWidth; hint.classList.add('animate-ios-pop'); }
+            } else {
+                if(prevInput) { prevInput.value = ''; formState.elecPrev = ''; }
+                if(hint) { hint.classList.add('hidden'); hint.classList.remove('flex'); }
+            }
+            updateCalc();
+        }
+
+        function updateCalc() {
+            const elPrev = document.getElementById('f-prev');
+            const elCurr = document.getElementById('f-curr');
+            const elRate = document.getElementById('f-rate');
+            const elWater = document.getElementById('f-water');
+            
+            if(elPrev) formState.elecPrev = elPrev.value;
+            if(elCurr) formState.elecCurr = elCurr.value;
+            if(elRate) formState.elecRate = Number(elRate.value);
+            if(elWater) formState.waterTotal = Number(elWater.value);
+
+            const units = (Number(formState.elecCurr)||0) - (Number(formState.elecPrev)||0);
+            const elecTot = units > 0 ? units * formState.elecRate : 0;
+            const waterTot = Number(formState.waterTotal) || 0;
+            const grandTot = elecTot + waterTot;
+
+            const elUnits = document.getElementById('calc-units');
+            const elElec = document.getElementById('calc-elec');
+            const elGrand = document.getElementById('calc-grand');
+            
+            if(elUnits) elUnits.innerText = units > 0 ? units : 0;
+            if(elElec) elElec.innerText = `฿${elecTot.toLocaleString()}`;
+            if(elGrand) elGrand.innerText = `฿${grandTot.toLocaleString()}`;
+        }
+
+        async function submitForm(e) {
+            e.preventDefault();
+            const prev = Number(formState.elecPrev), curr = Number(formState.elecCurr);
+            if(!prev || !curr) return alert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะ 🥺");
+            const units = curr - prev;
+            if(units < 0) return alert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนนะ! ❌");
+
+            const btn = document.getElementById('btn-save');
+            const btnText = document.getElementById('btn-save-text');
+            btn.disabled = true; btnText.innerText = 'กำลังบันทึกลง Sheet... ⏳'; btn.classList.add('opacity-70');
+
+            const record = {
+                id: Date.now().toString(),
+                month: formState.month,
+                year: formState.year,
+                elecPrev: prev, elecCurr: curr, elecUnits: units,
+                elecRate: formState.elecRate, elecTotal: units * formState.elecRate,
+                waterTotal: Number(formState.waterTotal) || 0, 
+                total: (units * formState.elecRate) + (Number(formState.waterTotal) || 0),
+                date: new Date().toISOString().split('T')[0]
+            };
+
+            await saveRecordToSheet(record);
+            
+            btn.disabled = false; btnText.innerText = 'บันทึกสำเร็จ! 🎉';
+            btn.classList.remove('opacity-70');
+            setTimeout(() => { changeTab('data'); }, 1000);
+        }
+
+        // ==========================================
+        // 3. DATA VIEW LOGIC
+        // ==========================================
+        function updateQueryYear(val) { qYear = val; renderApp(); }
+        function updateQueryMonth(val) { qMonth = val; renderApp(); }
+        function updateQuerySort(val) { qSort = val; renderApp(); }
+
+        function getDataViewHTML() {
+            let fRecs = records.filter(r => {
+                let matchY = qYear === 'all' || String(r.year) === String(qYear);
+                let matchM = qMonth === 'all' || r.month === qMonth;
+                let matchMin = qMinTotal === '' || Number(r.total) >= Number(qMinTotal);
+                let matchMax = qMaxTotal === '' || Number(r.total) <= Number(qMaxTotal);
+                return matchY && matchM && matchMin && matchMax;
+            });
+
+            fRecs = fRecs.sort((a, b) => {
+                if(qSort === 'date_desc') { if(a.year !== b.year) return b.year - a.year; return b.month - a.month; }
+                if(qSort === 'date_asc') { if(a.year !== b.year) return a.year - b.year; return a.month - b.month; }
+                if(qSort === 'total_desc') return b.total - a.total;
+                if(qSort === 'total_asc') return a.total - b.total;
+                if(qSort === 'unit_desc') return b.elecUnits - a.elecUnits;
+                return 0;
+            });
+
+            const qTotalAmount = fRecs.reduce((sum, r) => sum + Number(r.total), 0);
+            const qTotalUnits = fRecs.reduce((sum, r) => sum + Number(r.elecUnits), 0);
+
+            let years = [];
+            for(let i = 0; i < 5; i++) { years.push(String(new Date().getFullYear() + 543 - i)); }
+            const yOpts = [{value: 'all', label: 'ทุกปี ✨'}, ...[...new Set([...records.map(r=>String(r.year)), ...years])].sort().reverse().map(y => ({ value: y, label: `ปี พ.ศ. ${y}` }))];
+            const mOpts = [{value: 'all', label: 'ทุกเดือน 📅'}, ...THAI_MONTHS.map(x => ({ value: x.val, label: x.label }))];
+            const sortOpts = [
+                {value: 'date_desc', label: 'ใหม่ล่าสุด ✨'}, {value: 'date_asc', label: 'เก่าที่สุด 🕰️'},
+                {value: 'total_desc', label: 'ยอดชำระ มาก-น้อย 💸'}, {value: 'total_asc', label: 'ยอดชำระ น้อย-มาก 🪙'},
+                {value: 'unit_desc', label: 'หน่วยไฟ มากสุด ⚡'}
+            ];
+            
+            let tbody = '';
+            if (fRecs.length === 0) {
+                tbody = `<tr><td colspan="${currentUser.role==='admin'?'7':'6'}" class="p-16 text-center animate-ios-up" style="animation-delay: 0.2s"><div class="flex flex-col items-center text-stone-300"><i data-lucide="search-x" width="48" height="48" class="mb-4 text-pink-200"></i><p class="font-extrabold text-lg text-stone-400">ไม่พบข้อมูลที่คุณค้นหาเลย 🥺</p><p class="text-sm mt-1 font-medium">ลองเปลี่ยนเงื่อนไขการกรองดูนะ</p></div></td></tr>`;
+            } else {
+                tbody = fRecs.map((r, i) => `
+                <tr class="hover:bg-pink-50/50 transition-colors duration-300 group animate-ios-up" style="animation-delay: ${(i*0.05)+0.15}s">
+                    <td class="p-5"><div class="font-extrabold text-stone-700">${THAI_MONTHS.find(m=>m.val==r.month)?.label || r.month} ${r.year}</div><div class="text-[10px] text-stone-400 font-bold uppercase">บันทึก: ${r.date}</div></td>
+                    <td class="p-5 text-right font-bold text-stone-500">${r.elecPrev} <span class="text-pink-300 mx-1">→</span> ${r.elecCurr}</td>
+                    <td class="p-5 text-center"><span class="bg-teal-50 text-teal-600 px-3 py-1.5 rounded-xl text-xs font-black">${r.elecUnits}</span></td>
+                    <td class="p-5 text-right font-bold text-stone-500">${Number(r.elecTotal).toLocaleString()}</td>
+                    <td class="p-5 text-right font-bold text-stone-500">${Number(r.waterTotal).toLocaleString()}</td>
+                    <td class="p-5 text-right font-black text-pink-500 text-lg">฿${Number(r.total).toLocaleString()}</td>
+                    ${currentUser.role === 'admin' ? `
+                    <td class="p-5 text-right whitespace-nowrap">
+                       <button onclick="openEditModal('${r.id}')" class="text-stone-300 hover:text-sky-500 hover:bg-sky-50 active:scale-90 transition-all duration-300 smooth-expo p-2 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md mr-1" title="แก้ไขข้อมูล"><i data-lucide="pencil" width="16"></i></button>
+                       <button onclick="confirmDelete('${r.id}')" class="text-stone-300 hover:text-red-400 hover:bg-red-50 active:scale-90 transition-all duration-300 smooth-expo p-2 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md" title="ลบข้อมูล"><i data-lucide="trash-2" width="16"></i></button>
+                    </td>` : ''}
+                </tr>`).join('');
+            }
+
+            const actionTh = currentUser.role === 'admin' ? `<th class="p-5 rounded-tr-2xl text-center">จัดการ</th>` : `<th class="p-5 rounded-tr-2xl"></th>`;
+
+            return `
+            <div class="space-y-8 pb-8 pt-14 md:pt-0">
+                <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-ios-up">
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">ฐานข้อมูลทรงพลัง 🗂️✨</h2>
+                        <p class="text-stone-500 mt-1 font-medium">ค้นหา กรอง จัดเรียง ${currentUser.role==='admin'?'และแก้ไขข้อมูลได้ดั่งใจ':'ข้อมูลได้อย่างรวดเร็ว'}</p>
+                    </div>
+                </header>
+
+                <div class="bg-white p-6 rounded-[2.5rem] shadow-sm hover:shadow-md transition-shadow duration-300 border border-pink-50 flex flex-col gap-5 animate-ios-up relative z-50" style="animation-delay: 0.05s">
+                    <div class="flex flex-col xl:flex-row gap-5 xl:items-center">
+                        <div class="flex items-center gap-2 text-pink-500 font-extrabold whitespace-nowrap bg-pink-50 px-5 py-3 rounded-2xl w-fit shadow-sm"><i data-lucide="list-filter" width="18"></i> คิวรี่ขั้นสูง</div>
+                        <div class="flex-1 grid grid-cols-2 lg:grid-cols-4 gap-4 w-full">
+                            <div class="flex flex-col gap-1.5 relative z-[60]"><label class="text-xs font-bold text-stone-400 pl-1">ปี พ.ศ.</label>${createDropdownHTML('q-year', yOpts, qYear, 'updateQueryYear', 'pink')}</div>
+                            <div class="flex flex-col gap-1.5 relative z-[50]"><label class="text-xs font-bold text-stone-400 pl-1">เดือน</label>${createDropdownHTML('q-month', mOpts, qMonth, 'updateQueryMonth', 'pink')}</div>
+                            <div class="flex flex-col gap-1.5 relative z-[40] col-span-2 lg:col-span-1"><label class="text-xs font-bold text-teal-500 pl-1">จัดเรียงโดย</label>${createDropdownHTML('q-sort', sortOpts, qSort, 'updateQuerySort', 'teal', 'arrow-up-down')}</div>
+                            <div class="flex flex-col gap-1.5 col-span-2 lg:col-span-1 relative z-10"><label class="text-xs font-bold text-stone-400 pl-1">ยอดเงินรวม (ค้นหาช่วงราคา)</label>
+                                <div class="flex items-center gap-2 bg-white px-4 py-3.5 rounded-2xl border border-pink-100 shadow-sm focus-within:ring-4 focus-within:ring-pink-50 transition-all smooth-expo">
+                                    <input type="number" id="q-min" value="${qMinTotal}" onchange="qMinTotal=this.value; renderApp()" placeholder="Min" class="w-full bg-transparent text-sm font-extrabold text-stone-700 outline-none placeholder-stone-300">
+                                    <span class="text-stone-300">-</span>
+                                    <input type="number" id="q-max" value="${qMaxTotal}" onchange="qMaxTotal=this.value; renderApp()" placeholder="Max" class="w-full bg-transparent text-sm font-extrabold text-stone-700 outline-none placeholder-stone-300">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-pink-50/50 rounded-[2rem] p-5 flex flex-col md:flex-row justify-between md:items-center gap-4 border border-pink-100/50 mt-2">
+                        <div class="text-sm font-bold text-pink-600 flex items-center gap-2"><i data-lucide="check-circle-2" width="20"></i> พบข้อมูล <span class="bg-pink-400 text-white px-3 py-1 rounded-full shadow-sm">${fRecs.length}</span> รายการ</div>
+                        <div class="flex gap-8 items-end">
+                            <div class="text-right"><span class="text-[10px] text-stone-400 font-bold block uppercase mb-1">รวมหน่วยไฟ</span><span class="text-xl font-black text-stone-600">${qTotalUnits.toLocaleString()} <span class="text-xs font-bold text-stone-400">หน่วย</span></span></div>
+                            <div class="text-right"><span class="text-[10px] text-pink-400 font-bold block uppercase mb-1">รวมยอดชำระ</span><span class="text-3xl font-black text-pink-500 leading-none">฿${qTotalAmount.toLocaleString()}</span></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-[2.5rem] shadow-sm hover:shadow-md border border-pink-50 overflow-hidden p-2 animate-ios-up relative z-10" style="animation-delay: 0.15s">
+                    <div class="overflow-x-auto rounded-[2rem] pb-32">
+                        <table class="w-full text-left border-collapse min-w-[800px]">
+                            <thead><tr class="bg-pink-50/50 text-stone-400 text-xs uppercase tracking-wider font-extrabold"><th class="p-5 rounded-tl-2xl">รอบบิล</th><th class="p-5 text-right">มิเตอร์ไฟ (ก่อน-หลัง)</th><th class="p-5 text-center">หน่วยไฟ</th><th class="p-5 text-right">ค่าไฟ</th><th class="p-5 text-right">ค่าน้ำ</th><th class="p-5 text-right text-pink-400">ยอดรวม</th>${actionTh}</tr></thead>
+                            <tbody class="divide-y divide-pink-50/50">${tbody}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        async function confirmDelete(id) {
+            if(confirm('คุณต้องการลบข้อมูลบิลนี้ใช่หรือไม่? 🥺')) {
+                document.getElementById('loader').classList.remove('opacity-0', 'pointer-events-none');
+                document.getElementById('loader').style.display = 'flex';
+                await deleteRecordFromSheet(id);
+                document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
+                setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+                renderApp();
+            }
+        }
+
+        // ==========================================
+        // 4. REPORT & EXPORT LOGIC
+        // ==========================================
+        function updateReportSlicerYear(val) { repYear = val; renderApp(); }
+        function updateReportSlicerPeriod(val) { repPeriod = val; renderApp(); }
+        function updateReportSlicerMonth(val) { repMonth = val; renderApp(); }
+
+        function getReportHTML() {
+            let filtered = [...records].filter(r => String(r.year) === String(repYear));
+            let periodText = '';
+            
+            if (repPeriod === 'all') { periodText = `ทั้งหมดของปี พ.ศ. ${repYear}`; } 
+            else if (repPeriod === 'specific') {
+                filtered = filtered.filter(r => r.month === repMonth);
+                const mName = THAI_MONTHS.find(m => m.val === repMonth)?.label;
+                periodText = `ประจำเดือน ${mName} พ.ศ. ${repYear}`;
+            } else if (repPeriod === 'latest3') {
+                const uniqueMonths = [...new Set(filtered.map(r => r.month))].sort().reverse().slice(0, 3);
+                filtered = filtered.filter(r => uniqueMonths.includes(r.month));
+                periodText = `3 เดือนล่าสุดที่มีข้อมูล (ปี พ.ศ. ${repYear})`;
+            }
+
+            filtered.sort((a, b) => b.month - a.month); 
+
+            const rTotalAmt = filtered.reduce((sum, r) => sum + Number(r.total), 0);
+            const rTotalUnits = filtered.reduce((sum, r) => sum + Number(r.elecUnits), 0);
+            const rTotalWater = filtered.reduce((sum, r) => sum + Number(r.waterTotal), 0);
+
+            let years = [];
+            for(let i = 0; i < 5; i++) { years.push(String(new Date().getFullYear() + 543 - i)); }
+            const yOpts = [...new Set([...records.map(r=>String(r.year)), ...years])].sort().reverse().map(y => ({ value: y, label: `ปี พ.ศ. ${y}` }));
+            const periodOpts = [{value: 'latest3', label: '3 เดือนล่าสุด 🔥'}, {value: 'all', label: 'ทั้งหมดของปี 📅'}, {value: 'specific', label: 'ระบุเดือน 📌'}];
+            const mOpts = THAI_MONTHS.map(x => ({ value: x.val, label: x.label }));
+
+            let tbody = '';
+            if (filtered.length === 0) {
+                tbody = `<tr><td colspan="4" class="p-8 text-center text-stone-300 font-bold">ไม่มีข้อมูลในช่างเวลานี้</td></tr>`;
+            } else {
+                tbody = filtered.map(r => `
+                <tr class="border-b border-stone-100 last:border-0 text-sm">
+                    <td class="p-3 font-bold text-stone-600">${THAI_MONTHS.find(m=>m.val==r.month)?.label} ${r.year}</td>
+                    <td class="p-3 text-right font-bold text-teal-500">${r.elecUnits}</td>
+                    <td class="p-3 text-right font-bold text-stone-500">฿${Number(r.elecTotal).toLocaleString()}</td>
+                    <td class="p-3 text-right font-black text-pink-500">฿${Number(r.total).toLocaleString()}</td>
+                </tr>`).join('');
+            }
+
+            return `
+            <div class="space-y-8 pb-8 pt-14 md:pt-0">
+                <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-ios-up no-print">
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">รายงาน & ส่งออก 📊</h2>
+                        <p class="text-stone-500 mt-1 font-medium">สรุปข้อมูลเพื่อดูบนเว็บ พิมพ์ ดาวน์โหลด หรือส่งอีเมล</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button onclick="exportReportCSV()" class="bg-emerald-50 text-emerald-600 px-5 py-2.5 rounded-xl font-bold border border-emerald-100 hover:bg-emerald-100 active:scale-95 transition-all flex items-center gap-2">
+                            <i data-lucide="download" width="18"></i> CSV
+                        </button>
+                        <button onclick="handlePrint()" class="bg-stone-800 text-white px-5 py-2.5 rounded-xl font-bold border border-stone-900 hover:bg-stone-900 active:scale-95 transition-all flex items-center gap-2">
+                            <i data-lucide="printer" width="18"></i> พิมพ์ / PDF
+                        </button>
+                    </div>
+                </header>
+
+                <div class="bg-white p-6 rounded-[2.5rem] shadow-sm border border-pink-50 flex flex-col xl:flex-row gap-5 xl:items-center animate-ios-up relative z-50 no-print" style="animation-delay: 0.05s">
+                    <div class="flex items-center gap-2 text-pink-500 font-extrabold whitespace-nowrap bg-pink-50 px-5 py-3 rounded-2xl w-fit shadow-sm">
+                        <i data-lucide="filter" width="18"></i> ช่วงเวลา
+                    </div>
+                    <div class="flex-1 grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="relative z-[60]">${createDropdownHTML('rep-year', yOpts, repYear, 'updateReportSlicerYear', 'pink')}</div>
+                        <div class="relative z-[50]">${createDropdownHTML('rep-period', periodOpts, repPeriod, 'updateReportSlicerPeriod', 'teal')}</div>
+                        <div class="relative z-[40] ${repPeriod !== 'specific' ? 'opacity-50 pointer-events-none' : ''}">${createDropdownHTML('rep-month', mOpts, repMonth, 'updateReportSlicerMonth', 'sky')}</div>
+                    </div>
+                </div>
+
+                <div id="report-print-area" class="bg-white rounded-[2.5rem] shadow-sm border border-pink-50 p-8 md:p-12 animate-ios-up relative z-10 mx-auto max-w-4xl" style="animation-delay: 0.1s">
+                    <div class="text-center mb-10 print-break-before">
+                        <div class="inline-flex items-center justify-center p-4 bg-pink-50 rounded-full mb-4"><i data-lucide="sparkles" class="text-pink-400" width="32" height="32"></i></div>
+                        <h1 class="text-3xl font-black text-stone-800 tracking-tight">สรุปรายงานค่าใช้จ่าย 🌸</h1>
+                        <p class="text-stone-500 font-bold mt-2">${periodText}</p>
+                    </div>
+
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10">
+                        <div class="bg-stone-50 rounded-2xl p-4 text-center border border-stone-100">
+                            <p class="text-[10px] text-stone-400 font-bold uppercase mb-1">จำนวนบิล</p><p class="text-2xl font-black text-stone-700">${filtered.length}</p>
+                        </div>
+                        <div class="bg-teal-50 rounded-2xl p-4 text-center border border-teal-100/50">
+                            <p class="text-[10px] text-teal-600 font-bold uppercase mb-1">หน่วยไฟรวม</p><p class="text-2xl font-black text-teal-700">${rTotalUnits.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-sky-50 rounded-2xl p-4 text-center border border-sky-100/50">
+                            <p class="text-[10px] text-sky-600 font-bold uppercase mb-1">ค่าน้ำรวม</p><p class="text-2xl font-black text-sky-700">฿${rTotalWater.toLocaleString()}</p>
+                        </div>
+                        <div class="bg-pink-50 rounded-2xl p-4 text-center border border-pink-100/50 shadow-sm">
+                            <p class="text-[10px] text-pink-500 font-bold uppercase mb-1">ยอดชำระสุทธิ</p><p class="text-2xl font-black text-pink-600">฿${rTotalAmt.toLocaleString()}</p>
+                        </div>
+                    </div>
+
+                    <div class="overflow-hidden rounded-2xl border border-stone-100">
+                        <table class="w-full text-left border-collapse">
+                            <thead><tr class="bg-stone-50 text-stone-400 text-[11px] uppercase tracking-wider font-extrabold border-b border-stone-100"><th class="p-4">รอบบิล</th><th class="p-4 text-right">หน่วยไฟ</th><th class="p-4 text-right">ค่าไฟ</th><th class="p-4 text-right text-pink-400">ยอดรวม (รวมน้ำ)</th></tr></thead>
+                            <tbody>${tbody}</tbody>
+                        </table>
+                    </div>
+                    <div class="mt-12 text-center text-xs font-bold text-stone-300"><p>พิมพ์จากระบบ MyRoom Utility Manager</p><p>วันที่พิมพ์: ${new Date().toLocaleDateString('th-TH')}</p></div>
+                </div>
+
+                <div class="bg-gradient-to-r from-sky-50 to-white p-6 rounded-[2.5rem] shadow-sm border border-sky-100 flex flex-col md:flex-row justify-between items-center gap-4 animate-ios-up relative z-10 no-print" style="animation-delay: 0.2s">
+                    <div class="flex items-center gap-4">
+                        <div class="bg-white p-3 rounded-2xl text-sky-500 shadow-sm"><i data-lucide="mail" width="24"></i></div>
+                        <div><h3 class="text-lg font-extrabold text-stone-800">ส่งอีเมลอัตโนมัติ 💌</h3><p class="text-xs font-bold text-sky-600">รับรายงานสรุปยอดทุกสิ้นเดือนส่งตรงถึงอีเมล</p></div>
+                    </div>
+                    <button onclick="openEmailSetupModal()" class="w-full md:w-auto bg-sky-500 text-white px-6 py-3 rounded-2xl font-extrabold shadow-lg shadow-sky-200 hover:bg-sky-600 active:scale-95 transition-all">
+                        จัดการส่งอีเมล
+                    </button>
+                </div>
+            </div>`;
+        }
+
+        function exportReportCSV() {
+            let filtered = [...records].filter(r => String(r.year) === String(repYear));
+            if (repPeriod === 'specific') filtered = filtered.filter(r => r.month === repMonth);
+            else if (repPeriod === 'latest3') {
+                const uniqueMonths = [...new Set(filtered.map(r => r.month))].sort().reverse().slice(0, 3);
+                filtered = filtered.filter(r => uniqueMonths.includes(r.month));
+            }
+            filtered.sort((a, b) => b.month - a.month);
+            if(filtered.length === 0) return alert('ไม่มีข้อมูลสำหรับ Export ค่ะ 🥺');
+
+            const headers = ['เดือน', 'ปี', 'จดก่อน', 'จดหลัง', 'หน่วยไฟ', 'เรท', 'รวมค่าไฟ', 'ค่าน้ำ', 'ยอดสุทธิ', 'วันที่บันทึก'];
+            const rows = filtered.map(r => {
+                const monthName = THAI_MONTHS.find(m => m.val === r.month)?.label || r.month;
+                return [monthName, r.year, r.elecPrev, r.elecCurr, r.elecUnits, r.elecRate, r.elecTotal, r.waterTotal, r.total, r.date];
+            });
+            
+            const csvContent = "\uFEFF" + headers.join(",") + "\n" + rows.map(e => e.join(",")).join("\n");
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            
+            const link = document.createElement("a");
+            link.setAttribute("href", url);
+            link.setAttribute("download", `MyRoom_Report_${repYear}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        function openEmailSetupModal() {
+            const modal = document.getElementById('chart-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+
+            const savedEmail = localStorage.getItem('auto_email') || '';
+            const reportMonthOpts = THAI_MONTHS.map(m => ({ value: m.val, label: m.label }));
+            let reportYearOpts = [];
+            for(let i = 0; i < 3; i++) { reportYearOpts.push({ value: String(new Date().getFullYear() + 543 - i), label: `ปี พ.ศ. ${new Date().getFullYear() + 543 - i}` }); }
+
+            let daysOpts = [];
+            for(let i=1; i<=28; i++) daysOpts.push({ value: i.toString(), label: `วันที่ ${i}` });
+            let hoursOpts = [];
+            for(let i=0; i<=23; i++) hoursOpts.push({ value: i.toString(), label: `เวลา ${String(i).padStart(2,'0')}:00 น.` });
+
+            const html = `
+            <div class="flex flex-col w-full max-w-lg mx-auto pb-4">
+                <div class="mx-auto bg-sky-100 p-4 rounded-full text-sky-500 mb-4 animate-ios-pop"><i data-lucide="mail" width="32" height="32"></i></div>
+                <h2 class="text-2xl font-black text-stone-800 mb-2 text-center">จัดการส่งอีเมลรายงาน 💌</h2>
+                <p class="text-stone-500 font-medium mb-8 text-center text-sm">ส่งรายงานทันที หรือตั้งเวลาให้ระบบส่งอัตโนมัติทุกเดือน</p>
+                
+                <div class="space-y-2 mb-8 relative z-[70]">
+                    <label class="text-xs font-bold text-stone-400 uppercase pl-1">อีเมลผู้รับรายงาน (บันทึกเข้าระบบหลัก)</label>
+                    <div class="flex gap-2">
+                        <input type="email" id="setup-email" value="${savedEmail}" placeholder="example@mail.com" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 border border-transparent focus:border-sky-200">
+                        <button onclick="saveEmailSetup()" class="bg-stone-800 text-white px-6 rounded-2xl font-bold hover:bg-stone-900 active:scale-95 transition-all whitespace-nowrap">บันทึก</button>
+                    </div>
+                </div>
+
+                <div class="bg-pink-50/50 p-6 rounded-3xl border border-pink-100 mb-6 relative z-[60]">
+                    <h3 class="font-extrabold text-pink-500 mb-4 flex items-center gap-2"><i data-lucide="send" width="18"></i> 1. ส่งรายงานเดี๋ยวนี้ (Send Now)</h3>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative z-[65]">${createDropdownHTML('sn-month', reportMonthOpts, repMonth, '', 'pink')}</div>
+                        <div class="relative z-[60]">${createDropdownHTML('sn-year', reportYearOpts, repYear, '', 'pink')}</div>
+                    </div>
+                    <button onclick="sendEmailNow()" id="btn-send-now" class="w-full bg-pink-400 text-white py-3.5 rounded-xl font-bold shadow-sm hover:bg-pink-500 active:scale-95 transition-all flex items-center justify-center gap-2">ส่งเข้าอีเมลทันที 🚀</button>
+                </div>
+
+                <div class="bg-teal-50/50 p-6 rounded-3xl border border-teal-100 relative z-[50]">
+                    <h3 class="font-extrabold text-teal-600 mb-4 flex items-center gap-2"><i data-lucide="clock" width="18"></i> 2. ตั้งเวลาส่งอัตโนมัติ (Schedule)</h3>
+                    <p class="text-xs text-stone-500 font-medium mb-3">ระบบจะส่งสรุปของ "เดือนล่าสุด" ให้ตามรอบที่ตั้งไว้</p>
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div class="relative z-[55]">${createDropdownHTML('sch-day', daysOpts, scheduleDay, 'updateScheduleDay', 'teal')}</div>
+                        <div class="relative z-[50]">${createDropdownHTML('sch-hour', hoursOpts, scheduleHour, 'updateScheduleHour', 'teal')}</div>
+                    </div>
+                    <button onclick="saveSchedule()" id="btn-schedule" class="w-full bg-teal-500 text-white py-3.5 rounded-xl font-bold shadow-sm hover:bg-teal-600 active:scale-95 transition-all flex items-center justify-center gap-2">บันทึกเวลาส่งอัตโนมัติ ⏰</button>
+                </div>
+            </div>`;
+            
+            content.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        async function saveEmailSetup() {
+            const email = document.getElementById('setup-email').value;
+            if(!email || !email.includes('@')) return alert('กรุณากรอกอีเมลให้ถูกต้องค่ะ 🥺');
+
+            try {
+                if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    const payload = { action: 'saveEmail', username: currentUser.username, email: email };
+                    await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
+                }
+                localStorage.setItem('auto_email', email);
+                alert('บันทึกอีเมลเรียบร้อยแล้วค่ะ! 💌');
+            } catch (err) { alert('บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะคะ 🥺'); }
+        }
+
+        async function sendEmailNow() {
+            const email = document.getElementById('setup-email').value;
+            if(!email) return alert('กรุณาบันทึกอีเมลด้านบนก่อนนะคะ 🥺');
+            
+            const m = document.getElementById('dd-wrapper-sn-month').querySelector('span').innerText;
+            const yText = document.getElementById('dd-wrapper-sn-year').querySelector('span').innerText;
+            const mVal = THAI_MONTHS.find(x => x.label === m)?.val || String(new Date().getMonth() + 1).padStart(2,'0');
+            const yVal = yText.replace(/\D/g,'');
+
+            const btn = document.getElementById('btn-send-now');
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" width="18"></i> กำลังส่ง...';
+            lucide.createIcons();
+
+            try {
+                if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    const payload = { action: 'sendReportNow', email: email, month: mVal, year: yVal };
+                    const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
+                    const result = await res.json();
+                    if(result.status === 'success') alert(result.message);
+                    else alert(result.message);
+                } else {
+                    alert(`(ระบบจำลอง) ส่งรายงานเดือน ${mVal}/${yVal} ไปที่ ${email} สำเร็จแล้ว 🚀`);
+                }
+            } catch (err) { alert('ส่งไม่สำเร็จค่ะ 🥺'); }
+            
+            btn.innerHTML = 'ส่งเข้าอีเมลทันที 🚀';
+        }
+
+        async function saveSchedule() {
+            const btn = document.getElementById('btn-schedule');
+            btn.innerHTML = '<i data-lucide="loader-2" class="animate-spin" width="18"></i> กำลังตั้งค่า...';
+            lucide.createIcons();
+
+            try {
+                if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    const payload = { action: 'scheduleReport', day: scheduleDay, hour: scheduleHour };
+                    const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
+                    const result = await res.json();
+                    if(result.status === 'success') alert(result.message);
+                    else alert(result.message);
+                } else {
+                    alert(`(ระบบจำลอง) ตั้งเวลาให้ส่งอัตโนมัติทุกวันที่ ${scheduleDay} เวลา ${scheduleHour}:00 น. สำเร็จ! ⏰`);
+                }
+            } catch (err) { alert('ตั้งเวลาไม่สำเร็จค่ะ 🥺'); }
+            
+            btn.innerHTML = 'บันทึกเวลาส่งอัตโนมัติ ⏰';
+        }
+
+        // ==========================================
+        // 5. USERS MANAGEMENT LOGIC
+        // ==========================================
+        function getUsersHTML() {
+            let tbody = '';
+            if (usersList.length === 0) {
+                tbody = `<tr><td colspan="3" class="p-16 text-center text-stone-300 font-bold">ไม่มีข้อมูลผู้ใช้</td></tr>`;
+            } else {
+                tbody = usersList.map((u, i) => `
+                <tr class="hover:bg-pink-50/30 transition-colors duration-300 group animate-ios-up" style="animation-delay: ${(i*0.05)+0.1}s">
+                    <td class="p-5 flex items-center gap-4">
+                        <img src="https://api.dicebear.com/7.x/adventurer/svg?seed=${u.username}&backgroundColor=b6e3f4,ffdfbf,ffd5dc" class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover">
+                        <span class="font-extrabold text-stone-700 text-lg">${u.username}</span>
+                    </td>
+                    <td class="p-5 text-center">
+                        <span class="px-4 py-2 rounded-xl text-xs font-black ${u.role === 'admin' ? 'bg-pink-100 text-pink-600' : 'bg-teal-100 text-teal-600'} shadow-sm border border-white">
+                            ${u.role === 'admin' ? 'แอดมิน (Admin)' : 'ผู้ดูข้อมูล (User)'}
+                        </span>
+                    </td>
+                    <td class="p-5 text-right">
+                       ${u.username !== 'admin_cute' ? `
+                       <button onclick="confirmDeleteUser('${u.id}')" class="text-stone-300 hover:text-red-400 hover:bg-red-50 active:scale-90 transition-all duration-300 smooth-expo p-2.5 opacity-0 group-hover:opacity-100 bg-white rounded-full shadow-sm hover:shadow-md" title="ลบผู้ใช้"><i data-lucide="trash-2" width="18"></i></button>` : '<span class="text-[10px] font-bold text-stone-300 uppercase px-3 py-1">Super Admin</span>'}
+                    </td>
+                </tr>`).join('');
+            }
+
+            return `
+            <div class="space-y-8 pb-8 pt-14 md:pt-0">
+                <header class="flex flex-col md:flex-row md:items-end justify-between gap-4 animate-ios-up">
+                    <div>
+                        <h2 class="text-3xl font-extrabold text-stone-800 tracking-tight">ผู้ใช้งานระบบ 👥</h2>
+                        <p class="text-stone-500 mt-1 font-medium">จัดการบทบาทและสิทธิ์การเข้าถึงข้อมูล</p>
+                    </div>
+                    <button onclick="openAddUserModal()" class="bg-gradient-to-r from-pink-400 to-pink-500 text-white px-6 py-3.5 rounded-2xl font-extrabold shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex items-center gap-2">
+                        <i data-lucide="user-plus" width="20"></i> เพิ่มผู้ใช้งาน
+                    </button>
+                </header>
+
+                <div class="bg-white rounded-[2.5rem] shadow-sm hover:shadow-md border border-pink-50 overflow-hidden p-2 animate-ios-up" style="animation-delay: 0.1s">
+                    <div class="overflow-x-auto rounded-[2rem] pb-24">
+                        <table class="w-full text-left border-collapse min-w-[500px]">
+                            <thead><tr class="bg-pink-50/50 text-stone-400 text-xs uppercase tracking-wider font-extrabold"><th class="p-5 rounded-tl-2xl">โปรไฟล์ผู้ใช้งาน</th><th class="p-5 text-center">บทบาท (Role)</th><th class="p-5 rounded-tr-2xl text-right">จัดการ</th></tr></thead>
+                            <tbody class="divide-y divide-pink-50/50">${tbody}</tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>`;
+        }
+
+        function updateNewUserRole(val, label) { newUserRole = val; document.getElementById('dd-label-nu-role').innerText = label; }
+
+        function openAddUserModal() {
+            const modal = document.getElementById('chart-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+
+            const roleOpts = [{value: 'user', label: 'ผู้ดูข้อมูล (ดูได้อย่างเดียว)'}, {value: 'admin', label: 'แอดมิน (จัดการได้ทุกอย่าง)'}];
+
+            const num1 = Math.floor(Math.random() * 10) + 1;
+            const num2 = Math.floor(Math.random() * 10) + 1;
+            currentCaptchaAnswer = num1 + num2;
+
+            const html = `
+            <div class="flex flex-col w-full max-w-md mx-auto pb-4">
+                <h2 class="text-3xl font-black text-stone-800 mb-2 flex items-center gap-3">
+                    <i data-lucide="user-plus" class="text-pink-500" width="28" height="28"></i> เพิ่มผู้ใช้งาน ✨
+                </h2>
+                <p class="text-stone-500 font-medium mb-6">กำหนดชื่อและบทบาทการเข้าถึงระบบ</p>
+                
+                <form id="add-user-form" onsubmit="submitAddUser(event)" class="space-y-5">
+                    <div class="space-y-1.5 relative z-[60]">
+                        <label class="text-xs font-bold text-stone-400 uppercase pl-1">ชื่อผู้ใช้งาน (Username)</label>
+                        <input type="text" id="nu-username" required placeholder="เช่น user01" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-pink-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-pink-200 shadow-inner">
+                    </div>
+                    <div class="space-y-1.5 relative z-[50]">
+                        <label class="text-xs font-bold text-stone-400 uppercase pl-1">รหัสผ่าน (Password)</label>
+                        <input type="password" id="nu-password" required placeholder="••••••••" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-pink-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-pink-200 shadow-inner">
+                    </div>
+                    <div class="space-y-1.5 relative z-[40]">
+                        <label class="text-xs font-bold text-stone-400 uppercase pl-1">บทบาท (Role)</label>
+                        ${createDropdownHTML('nu-role', roleOpts, 'user', 'updateNewUserRole', 'pink')}
+                    </div>
+                    
+                    <div class="bg-orange-50/50 border border-orange-100 p-4 rounded-2xl relative z-[30]">
+                        <label class="text-xs font-bold text-orange-500 uppercase pl-1 flex items-center gap-1 mb-2">
+                            <i data-lucide="bot" width="14"></i> ยืนยันว่าไม่ใช่บอท
+                        </label>
+                        <div class="flex items-center gap-3">
+                            <span class="text-xl font-black text-stone-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-stone-100">${num1} + ${num2} = </span>
+                            <input type="number" id="nu-captcha" required placeholder="?" class="w-20 p-2 text-center bg-white rounded-xl text-stone-700 font-black text-xl focus:ring-4 focus:ring-orange-100 outline-none border border-stone-100 focus:border-orange-300 shadow-inner">
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                        <button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button>
+                        <button type="submit" id="btn-save-user" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
+                            <i data-lucide="check-circle-2" width="24"></i> <span id="btn-save-user-text">เพิ่มผู้ใช้ 💖</span>
+                        </button>
+                    </div>
+                </form>
+            </div>`;
+            
+            content.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        async function submitAddUser(e) {
+            e.preventDefault();
+            const username = document.getElementById('nu-username').value;
+            const password = document.getElementById('nu-password').value;
+            const captcha = parseInt(document.getElementById('nu-captcha').value);
+
+            if (captcha !== currentCaptchaAnswer) {
+                alert('บวกเลขผิดนะ เอ๊ะ! หรือว่าเป็นบอทจริงๆ 🤖❌');
+                document.getElementById('nu-captcha').value = '';
+                return;
+            }
+
+            if (usersList.some(u => u.username === username)) { alert('ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้วค่ะ 🥺'); return; }
+
+            const btn = document.getElementById('btn-save-user');
+            const btnText = document.getElementById('btn-save-user-text');
+            btn.disabled = true; btnText.innerText = 'กำลังเพิ่ม... ⏳'; btn.classList.add('opacity-70');
+
+            const newUser = { id: 'u' + Date.now(), username: username, password: password, role: newUserRole, status: 'active' };
+            usersList.push(newUser);
+
+            btnText.innerText = 'เพิ่มสำเร็จ! 🎉';
+            setTimeout(() => { closeModal(); renderApp(); }, 800);
+        }
+        
+        async function confirmDeleteUser(id) {
+            if(confirm('คุณต้องการลบผู้ใช้นี้ใช่หรือไม่? 🥺')) { usersList = usersList.filter(u => u.id !== id); renderApp(); }
+        }
+
+        // ==========================================
+        // 6. MODAL LOGIC (ขยายกราฟ & ปิดหน้าต่าง)
+        // ==========================================
+        function openModal(type) {
+            const modal = document.getElementById('chart-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+            
+            const m = getDashboardMetrics();
+            let html = '';
+            
+            if(type === 'pie') {
+                html = `<div class="flex flex-col items-center flex-1 py-10"><h2 class="text-2xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="pie-chart" class="text-pink-400"></i> สัดส่วนค่าใช้จ่าย (ขยายใหญ่)</h2><p class="text-stone-400 font-bold mb-12">ช่วงเวลา: ${filterMonth==='all'?`ตลอดปี ${filterYear}`:`เดือน ${THAI_MONTHS.find(x=>x.val==filterMonth)?.label} ปี ${filterYear}`}</p><div class="w-full max-w-lg mx-auto flex-1 flex items-center">${m.dashRecs.length>0?getDonutSVG(m.elecPercent, m.totalElec, m.totalWater, m.waterPercent, true):'<p>ไม่มีข้อมูล</p>'}</div></div>`;
+            } else if (type === 'line') {
+                html = `<div class="flex flex-col flex-1 py-4 w-full"><div class="flex justify-between items-start mb-12 flex-col md:flex-row gap-4"><div><h2 class="text-2xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="line-chart" class="text-pink-400"></i> เทียบปีต่อปี (ขยายใหญ่)</h2><p class="text-stone-400 font-bold">ข้อมูลประจำปี: ${filterYear}</p></div><div class="flex items-center gap-6 text-sm font-bold text-stone-500 bg-stone-50 px-6 py-3 rounded-2xl md:mr-12 border border-stone-100 shadow-sm"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-slate-300"></div> ปี ${Number(filterYear)-1}</div><div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-pink-400"></div> ปี ${filterYear}</div></div></div>${getLineChartHTML(m.chartData, m.maxTotal, true, m.highestMonthVal)}</div>`;
+            } else if (type === 'bar') {
+                html = `<div class="flex flex-col flex-1 py-4 w-full"><div class="flex justify-between items-start mb-12 flex-col md:flex-row gap-4"><div><h2 class="text-2xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="bar-chart-3" class="text-teal-500"></i> เปรียบเทียบหน่วยไฟ / ค่าใช้จ่าย (ขยายใหญ่)</h2><p class="text-stone-400 font-bold">ข้อมูลประจำปี: ${filterYear}</p></div><div class="flex items-center gap-6 text-sm font-bold text-stone-500 bg-stone-50 px-6 py-3 rounded-2xl md:mr-12 border border-stone-100 shadow-sm"><div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-teal-300"></div> หน่วยไฟ</div><div class="flex items-center gap-2"><div class="w-4 h-4 rounded-full bg-pink-300"></div> เงินรวม</div><div class="flex items-center gap-2 ml-4"><div class="w-4 h-4 rounded-full bg-rose-500 animate-pulse"></div> แพงสุด 🔥</div></div></div>${getBarChartHTML(m.chartData, m.maxUnits, m.maxTotal, true, m.highestMonthVal)}</div>`;
+            }
+            
+            content.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function closeModal() {
+            document.getElementById('chart-modal').classList.add('hidden');
+            document.getElementById('modal-content').innerHTML = '';
+        }
+
+        // ==========================================
+        // 7. EDIT RECORD MODAL LOGIC
+        // ==========================================
+        let editState = {};
+        
+        function updateEditMonth(val, label) { editState.month = val; document.getElementById('dd-label-edit-month').innerText = label; }
+        function updateEditYear(val, label) { editState.year = val; document.getElementById('dd-label-edit-year').innerText = label; }
+
+        function openEditModal(id) {
+            const record = records.find(r => r.id === id);
+            if (!record) return;
+            editState = { ...record };
+
+            const modal = document.getElementById('chart-modal');
+            const content = document.getElementById('modal-content');
+            modal.classList.remove('hidden');
+
+            let years = [];
+            for(let i = 0; i < 5; i++) { years.push(String(new Date().getFullYear() + 543 - i)); }
+            const yearOpts = [...new Set([String(record.year), ...years])].sort().reverse().map(y => ({ value: y, label: `ปี พ.ศ. ${y} ✨` }));
+            const monthOpts = THAI_MONTHS.map(m => ({ value: m.val, label: m.label }));
+
+            const html = `
+            <div class="flex flex-col w-full max-w-2xl mx-auto pb-4">
+                <h2 class="text-3xl font-black text-stone-800 mb-2 flex items-center gap-3">
+                    <i data-lucide="pencil" class="text-sky-500" width="28" height="28"></i> แก้ไขข้อมูลบิล 📝
+                </h2>
+                <p class="text-stone-500 font-medium mb-8">แก้ไขรายละเอียดแล้วกดบันทึกเพื่ออัปเดตข้อมูล</p>
+                
+                <form id="edit-form" onsubmit="submitEdit(event, '${id}')" class="space-y-6">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-50">
+                        <div class="flex flex-col gap-1.5 relative z-[60]">
+                            <label class="text-xs font-bold text-stone-400 uppercase pl-1">ประจำเดือน</label>
+                            ${createDropdownHTML('edit-month', monthOpts, record.month, 'updateEditMonth', 'sky')}
+                        </div>
+                        <div class="flex flex-col gap-1.5 relative z-[50]">
+                            <label class="text-xs font-bold text-stone-400 uppercase pl-1">ปี พ.ศ.</label>
+                            ${createDropdownHTML('edit-year', yearOpts, record.year, 'updateEditYear', 'sky')}
+                        </div>
+                    </div>
+                    
+                    <div class="bg-sky-50 rounded-3xl p-6 border border-sky-100 z-10 relative">
+                        <div class="flex justify-between items-center mb-6">
+                            <h4 class="font-extrabold text-stone-700 flex items-center gap-2 text-lg">
+                                <div class="p-2 bg-sky-50 rounded-xl"><i data-lucide="zap" width="18" class="text-sky-500 fill-sky-500"></i></div> ข้อมูลมิเตอร์ไฟ
+                            </h4>
+                            <div class="flex items-center gap-2 text-xs bg-white px-3 py-1.5 rounded-xl shadow-sm border border-stone-100">
+                                <span class="text-stone-500 font-bold">หน่วยละ</span>
+                                <input type="number" id="e-rate" value="${record.elecRate}" class="w-14 bg-transparent text-center font-black text-sky-500 outline-none border-b-2 border-stone-100 focus:border-sky-400 transition-colors" oninput="updateEditCalc()">
+                                <span class="text-stone-500 font-bold">บ.</span>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 mb-5">
+                            <div>
+                                <label class="text-xs font-bold text-stone-500 mb-1.5 ml-1 block">จดครั้งก่อน</label>
+                                <input type="number" id="e-prev" value="${record.elecPrev}" required class="w-full p-4 bg-white rounded-2xl text-stone-700 font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-sky-200 shadow-inner" oninput="updateEditCalc()">
+                            </div>
+                            <div>
+                                <label class="text-xs font-bold text-stone-500 mb-1.5 ml-1 block">จดครั้งนี้</label>
+                                <input type="number" id="e-curr" value="${record.elecCurr}" required class="w-full p-4 bg-white rounded-2xl text-stone-700 font-bold focus:ring-4 focus:ring-sky-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-sky-200 shadow-inner" oninput="updateEditCalc()">
+                            </div>
+                        </div>
+
+                        <div class="bg-sky-50/50 rounded-2xl p-4 flex flex-wrap justify-between items-center gap-2 border border-sky-100/50">
+                            <div class="text-stone-500 font-bold text-sm">สรุปใช้ไป <span id="e-calc-units" class="text-sky-600 font-black text-xl mx-1">${record.elecUnits}</span> หน่วย</div>
+                            <div class="text-stone-500 font-bold text-sm flex items-center">ยอดไฟ <span id="e-calc-elec" class="text-sky-500 font-black text-xl ml-2">฿${Number(record.elecTotal).toLocaleString()}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="bg-gradient-to-r from-teal-50 to-white rounded-[2rem] p-5 border border-teal-100 flex justify-between items-center shadow-sm">
+                        <div class="flex items-center gap-3">
+                            <div class="bg-white p-3 rounded-2xl text-teal-400 shadow-sm border border-teal-50"><i data-lucide="droplets" width="22"></i></div>
+                            <div><h4 class="font-extrabold text-stone-700 text-lg">ค่าน้ำประปา</h4><p class="text-[10px] text-teal-500 font-bold uppercase bg-teal-100/50 px-2 py-0.5 rounded-md inline-block mt-0.5">แก้ไขได้</p></div>
+                        </div>
+                        <div class="flex items-center gap-2 text-xs bg-white px-3 py-2 rounded-xl shadow-sm border border-teal-100">
+                            <span class="text-stone-500 font-bold">฿</span>
+                            <input type="number" id="e-water" value="${record.waterTotal}" class="w-16 bg-transparent text-center font-black text-teal-500 outline-none border-b-2 border-stone-100 focus:border-teal-400 transition-colors" oninput="updateEditCalc()">
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-end bg-pink-50/50 p-5 rounded-[2rem] border border-pink-100 mt-4">
+                        <span class="text-stone-500 font-extrabold uppercase tracking-wider text-sm">ยอดสุทธิรวม</span>
+                        <span id="e-calc-grand" class="text-4xl font-black text-pink-500 tracking-tight transition-all drop-shadow-sm">฿${Number(record.total).toLocaleString()}</span>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                        <button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 sm:py-5 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button>
+                        <button type="submit" id="btn-update" class="w-full sm:flex-[2] bg-gradient-to-r from-sky-400 to-sky-500 text-white font-extrabold text-xl py-4 sm:py-5 rounded-full shadow-lg shadow-sky-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
+                            <i data-lucide="check-circle-2" width="24"></i> <span id="btn-update-text">บันทึกการแก้ไข ✨</span>
+                        </button>
+                    </div>
+                </form>
+            </div>`;
+            
+            content.innerHTML = html;
+            lucide.createIcons();
+        }
+
+        function updateEditCalc() {
+            const prev = Number(document.getElementById('e-prev').value) || 0;
+            const curr = Number(document.getElementById('e-curr').value) || 0;
+            const rate = Number(document.getElementById('e-rate').value) || 0;
+            const water = Number(document.getElementById('e-water').value) || 0;
+            const units = curr - prev;
+            const elecTot = units > 0 ? units * rate : 0;
+            const grandTot = elecTot + water;
+            
+            document.getElementById('e-calc-units').innerText = units > 0 ? units : 0;
+            document.getElementById('e-calc-elec').innerText = `฿${elecTot.toLocaleString()}`;
+            document.getElementById('e-calc-grand').innerText = `฿${grandTot.toLocaleString()}`;
+        }
+
+        async function submitEdit(e, id) {
+            e.preventDefault();
+            const prev = Number(document.getElementById('e-prev').value);
+            const curr = Number(document.getElementById('e-curr').value);
+            const rate = Number(document.getElementById('e-rate').value);
+            const water = Number(document.getElementById('e-water').value) || 0;
+            
+            if(!prev || !curr) return alert("กรุณากรอกหน่วยไฟให้ครบถ้วนนะคะ 🥺");
+            const units = curr - prev;
+            if(units < 0) return alert("หน่วยเดือนนี้ ต้องมากกว่าหน่วยเดือนก่อนน้า! ❌");
+
+            const btn = document.getElementById('btn-update');
+            const btnText = document.getElementById('btn-update-text');
+            btn.disabled = true; btnText.innerText = 'กำลังอัปเดต... ⏳'; btn.classList.add('opacity-70');
+
+            const oldRecord = records.find(r => r.id === id);
+            const updatedRecord = {
+                ...oldRecord, month: editState.month, year: editState.year,
+                elecPrev: prev, elecCurr: curr, elecUnits: units,
+                elecRate: rate, elecTotal: units * rate, 
+                waterTotal: water, total: (units * rate) + water,
+            };
+
+            await saveRecordToSheet(updatedRecord);
+            btnText.innerText = 'อัปเดตเรียบร้อย! 🎉';
+            setTimeout(() => { closeModal(); renderApp(); }, 800);
+        }
+        
+        function handlePrint() {
+            if (window.self !== window.top) {
+                alert("⚠️ โหมดพิมพ์/PDF อาจทำงานไม่สมบูรณ์เมื่อกดจากในหน้าต่างเล็กๆ แบบนี้นะคะ\n\nแนะนำให้เซฟโค้ดไปเปิดบนเบราว์เซอร์ Chrome แล้วค่อยกดพิมพ์น้า 🌸");
+            }
+            try {
+                window.print();
+            } catch(e) {
+                console.error("Print failed", e);
+            }
+        }
+    </script>
+</body>
+</html>
