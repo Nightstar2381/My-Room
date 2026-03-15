@@ -80,11 +80,11 @@
         }
     </style>
 </head>
-<body class="selection:bg-pink-200 selection:text-pink-900 overflow-x-hidden">
+<body class="selection:bg-pink-200 selection:text-pink-900 overflow-x-hidden opacity-0 transition-opacity duration-500" id="main-body">
 
     <div id="loader" class="fixed inset-0 bg-[#FFF6F7] z-[999] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="animate-spin text-pink-400 mb-4"><i data-lucide="refresh-cw" width="40" height="40"></i></div>
-        <div class="text-pink-400 font-bold text-lg">กำลังซิงค์ข้อมูล... 🌸</div>
+        <div class="text-pink-400 font-bold text-lg">กำลังตรวจสอบสิทธิ์... 🌸</div>
     </div>
 
     <!-- Desktop Floating User Profile -->
@@ -94,6 +94,10 @@
             <p id="profile-username" class="text-sm font-extrabold text-stone-700 leading-none group-hover:text-pink-500 transition-colors"></p>
             <p id="profile-role" class="text-[10px] font-bold uppercase mt-0.5"></p>
         </div>
+        <!-- ปุ่มออกจากระบบ (Logout) -->
+        <button onclick="logout(event)" class="ml-2 p-2 bg-rose-50 text-rose-500 rounded-full hover:bg-rose-500 hover:text-white transition-colors duration-300" title="ออกจากระบบ">
+            <i data-lucide="log-out" width="16" height="16"></i>
+        </button>
     </div>
 
     <div class="flex flex-col md:flex-row max-w-[1600px] mx-auto min-h-screen relative hidden" id="app-container">
@@ -111,6 +115,9 @@
             </div>
             <div class="flex items-center gap-3">
                 <img id="mobile-profile-avatar" onclick="toggleDemoRole()" src="" class="w-9 h-9 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover active:scale-90 transition-transform cursor-pointer" title="สลับบทบาท">
+                <button onclick="logout(event)" class="p-2 text-rose-500 bg-rose-50 border border-rose-100 rounded-xl active:scale-95 transition-all focus:outline-none" title="ออกจากระบบ">
+                    <i data-lucide="log-out" width="20" height="20"></i>
+                </button>
                 <button onclick="toggleMobileMenu()" class="p-2 text-stone-600 hover:text-pink-500 bg-stone-50 border border-stone-100 rounded-xl active:scale-95 transition-all focus:outline-none">
                     <i data-lucide="menu" width="22" height="22"></i>
                 </button>
@@ -167,6 +174,45 @@
     </div>
 
     <script>
+        // ==========================================
+        // 🔒 1. SESSION PROTECTION (ยามเฝ้าประตู)
+        // ==========================================
+        const authToken = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
+        if (!authToken) {
+            try {
+                if (window.location.protocol === 'blob:' || window.location.protocol === 'data:') {
+                    console.log("พรีวิวโหมด: อนุญาตให้เข้าใช้งานหน้าจำลองชั่วคราว");
+                    document.getElementById('main-body').classList.remove('opacity-0');
+                } else {
+                    window.location.href = 'login.html'; 
+                }
+            } catch (e) {
+                console.warn(e);
+                document.getElementById('main-body').classList.remove('opacity-0');
+            }
+        } else {
+            document.getElementById('main-body').classList.remove('opacity-0');
+        }
+
+        function logout(e) {
+            e.stopPropagation();
+            if(confirm("ต้องการออกจากระบบใช่หรือไม่?")) {
+                localStorage.removeItem('auth_token');
+                localStorage.removeItem('user_info');
+                sessionStorage.removeItem('auth_token');
+                sessionStorage.removeItem('user_info');
+                try {
+                    if (window.location.protocol === 'blob:' || window.location.protocol === 'data:') {
+                        alert("ออกจากระบบแล้ว (โหมดพรีวิว)");
+                    } else {
+                        window.location.href = 'login.html';
+                    }
+                } catch(err) {
+                    console.warn(err);
+                }
+            }
+        }
+
         // ==========================================
         // ⚠️ การตั้งค่า Google Sheets API
         // ==========================================
@@ -231,7 +277,9 @@
             updateProfileUI(); 
             await fetchRecords();
             document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
-            setTimeout(() => document.getElementById('loader').style.display = 'none', 500);
+            setTimeout(() => {
+                document.getElementById('loader').style.display = 'none';
+            }, 500);
             document.getElementById('app-container').classList.remove('hidden');
             renderApp();
             
@@ -1368,6 +1416,9 @@
             link.click();
             document.body.removeChild(link);
         }
+
+        function updateScheduleDay(val, label) { scheduleDay = val; document.getElementById('dd-label-sch-day').innerText = label; }
+        function updateScheduleHour(val, label) { scheduleHour = val; document.getElementById('dd-label-sch-hour').innerText = label; }
 
         function openEmailSetupModal() {
             const modal = document.getElementById('chart-modal');
