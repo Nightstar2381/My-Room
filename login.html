@@ -67,7 +67,7 @@
                 <div class="bg-gradient-to-br from-pink-300 to-pink-400 p-4 rounded-[1.5rem] text-white shadow-lg shadow-pink-200 transform transition-transform duration-500 hover:scale-110 hover:rotate-6 smooth-spring mb-5">
                     <i data-lucide="sparkles" width="32" height="32" class="text-white"></i>
                 </div>
-                <h1 class="font-black text-3xl text-stone-800 tracking-tight mb-2">ยินดีต้อนรับ! 🌸</h1>
+                <h1 class="font-black text-3xl text-stone-800 tracking-tight mb-2">ยินดีต้อนรับ!</h1>
                 <p class="text-sm font-bold text-stone-400 uppercase tracking-wider">เข้าสู่ระบบจัดการบิล MyRoom</p>
             </div>
 
@@ -139,7 +139,7 @@
         // ==========================================
         // ⚠️ ใส่ URL ของ Google Apps Script ของคุณที่นี่
         // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjVjCwqGVSAzZYoXxcnTvOOlt5LYnRU9OXdHhE6ha0Vp0pIXaDfSxxfvVimcfTQl5S/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwv-Nk2mogrHFOnfaPeafVHd4agr8vpeQiuCArwXr6JOq9tIIUBBXV61nuCepsqbOlD/exec"; 
 
         window.onload = () => {
             const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
@@ -180,7 +180,7 @@
 
             // ตรวจสอบ CAPTCHA ก่อน
             if (captchaVal !== currentCaptchaAnswer) {
-                showError('บวกเลขผิดนะ! ยืนยัน CAPTCHA ใหม่อีกครั้ง 🤖❌', btn, btnText, errorBox);
+                showError('บวกเลขผิดนะ! ยืนยัน CAPTCHA ใหม่อีกครั้ง', btn, btnText, errorBox);
                 generateCaptcha();
                 document.getElementById('captcha-answer').value = '';
                 return;
@@ -261,7 +261,8 @@
                     localStorage.removeItem('mock_attempts');
                     localStorage.removeItem('mock_lockout');
                     mockAttempts = 0;
-                    loginSuccess('mock_token_xyz123', { username: 'admin', role: 'admin' }, rememberMe, btn, btnText);
+                    // ปรับค่าจำลองให้ตรงกับที่ index.html ต้องการ
+                    loginSuccess('mock_token_xyz123', { username: 'admin', role: 'admin', email: '' }, rememberMe, btn, btnText);
                 } else {
                     mockAttempts++;
                     localStorage.setItem('mock_attempts', mockAttempts);
