@@ -342,7 +342,7 @@
         // ==========================================
         // ⚠️ การตั้งค่า Google Sheets API
         // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwjVjCwqGVSAzZYoXxcnTvOOlt5LYnRU9OXdHhE6ha0Vp0pIXaDfSxxfvVimcfTQl5S/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwUE4re7XeB0sVjgyh-G7eSVKIqr_Bim4gsP4ZSaxrli6IyYf-uxmbUyp6AvfXLYjpL/exec"; 
         
         const THAI_MONTHS = [
             { val: '01', label: 'มกราคม', short: 'ม.ค.' }, { val: '02', label: 'กุมภาพันธ์', short: 'ก.พ.' }, 
@@ -1644,10 +1644,36 @@
         function updateScheduleDay(val, label) { scheduleDay = val; document.getElementById('dd-label-sch-day').innerText = label; }
         function updateScheduleHour(val, label) { scheduleHour = val; document.getElementById('dd-label-sch-hour').innerText = label; }
 
-        function openEmailSetupModal() {
+        async function openEmailSetupModal() {
             showModalWithAnim();
             const content = document.getElementById('modal-content');
-            const savedEmail = currentUser.email || localStorage.getItem('auto_email') || '';
+            
+            // 1. แสดง Loading State ก่อน
+            if(content) {
+                content.innerHTML = `<div class="flex justify-center items-center py-20"><i data-lucide="loader-2" class="animate-spin text-sky-500" width="48" height="48"></i><span class="ml-3 font-bold text-stone-500">กำลังซิงก์ข้อมูลอีเมล...</span></div>`;
+                lucide.createIcons();
+            }
+
+            let savedEmail = currentUser.email || localStorage.getItem('auto_email') || '';
+            
+            // 2. ดึงอีเมลข้ามเครื่องจาก Database (Google Sheets) แบบ Real-time
+            try {
+                if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    const res = await fetch(GOOGLE_SCRIPT_URL, { 
+                        method: 'POST', 
+                        body: JSON.stringify({ action: 'getUserEmail', username: currentUser.username }), 
+                        headers: { 'Content-Type': 'text/plain;charset=utf-8' }
+                    });
+                    const result = await res.json();
+                    if(result.status === 'success' && result.email) {
+                        savedEmail = result.email;
+                        currentUser.email = savedEmail;
+                        localStorage.setItem('auto_email', savedEmail);
+                    }
+                }
+            } catch (e) {
+                console.warn('Sync email failed:', e);
+            }
             
             // รีเซ็ตค่าให้เป็นเดือน/ปี ปัจจุบันเสมอทุกครั้งที่เปิด Popup
             snMonth = String(new Date().getMonth() + 1).padStart(2, '0');
@@ -1691,7 +1717,7 @@
             lucide.createIcons();
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
-                    const payload = { action: 'sendReportNow', email: email, period: 'specific', month: snMonth, year: snYear };
+                    const payload = { action: 'sendReportNow', email: email, period: 'specific', month: snMonth, year: snYear, username: currentUser.username, role: currentUser.role };
                     const res = await fetch(GOOGLE_SCRIPT_URL, { method: 'POST', body: JSON.stringify(payload), headers: { 'Content-Type': 'text/plain;charset=utf-8' }});
                     const result = await res.json();
                     showCustomAlert(result.message, result.status === 'success' ? 'success' : 'error');
