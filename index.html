@@ -103,7 +103,7 @@
 
     <div id="loader" class="fixed inset-0 bg-[#FFF6F7] z-[999] flex flex-col items-center justify-center transition-opacity duration-500">
         <div class="animate-spin text-pink-400 mb-4"><i data-lucide="loader-2" width="40" height="40"></i></div>
-        <div class="text-pink-400 font-bold text-lg" id="loader-text">กำลังโหลดข้อมูล...</div>
+        <div class="text-pink-400 font-bold text-lg" id="loader-text">กำลังซิงก์ข้อมูล...</div>
     </div>
 
     <!-- Desktop Floating User Profile -->
@@ -186,7 +186,7 @@
 
     <!-- General Content Modal -->
     <div id="chart-modal" class="fixed inset-0 z-[100] bg-stone-900/40 backdrop-blur-xl flex items-center justify-center p-4 md:p-10 hidden no-print" onclick="if(event.target === this) closeModal()">
-        <div class="bg-white rounded-[3rem] p-6 md:p-12 w-full max-w-6xl max-h-[90vh] overflow-y-auto relative shadow-2xl flex flex-col" id="modal-container">
+        <div class="bg-white rounded-[3rem] p-6 md:p-12 w-full max-w-6xl max-h-[90vh] overflow-y-auto relative shadow-2xl flex flex-col" id="modal-container" onclick="event.stopPropagation()">
             <button onclick="closeModal()" class="absolute top-6 right-6 p-3 bg-stone-100 text-stone-500 rounded-full hover:bg-pink-100 hover:text-pink-500 active:scale-90 transition-all duration-300 smooth-expo z-50 shadow-sm">
                 <i data-lucide="x"></i>
             </button>
@@ -222,6 +222,29 @@
     </div>
 
     <script>
+        // ==========================================
+        // 🛑 AUTO LOGOUT ON INACTIVITY
+        // ==========================================
+        let inactivityTimer;
+        const INACTIVITY_TIME = 30 * 60 * 1000; // 30 นาที
+
+        function resetInactivityTimer() {
+            clearTimeout(inactivityTimer);
+            inactivityTimer = setTimeout(autoLogout, INACTIVITY_TIME);
+        }
+
+        function autoLogout() {
+            localStorage.removeItem('auth_token');
+            localStorage.removeItem('user_info');
+            sessionStorage.removeItem('auth_token');
+            sessionStorage.removeItem('user_info');
+            
+            showCustomAlert("เซสชันของคุณหมดอายุเนื่องจากไม่มีการใช้งานเป็นเวลานาน กรุณาเข้าสู่ระบบใหม่", "warning");
+            setTimeout(() => {
+                window.location.replace('login.html');
+            }, 3000);
+        }
+
         // ==========================================
         // 🛑 SCROLL LOCK & CUSTOM MODALS
         // ==========================================
@@ -334,13 +357,11 @@
             let actualStyle = style;
             let actualSeed = encodeURIComponent((seed || '').trim());
             
-            // สร้าง Variation สำหรับ Adventurer 10 แบบ โดยใช้ seed + variant name
             if (style.startsWith('adventurer-v')) {
                 actualStyle = 'adventurer';
                 actualSeed = encodeURIComponent((seed || '').trim() + '-' + style);
             }
             
-            // อัปเกรดเป็น DiceBear API v9.x เพื่อความเสถียรและรูปแบบใหม่ๆ
             return `https://api.dicebear.com/9.x/${actualStyle}/svg?seed=${actualSeed}&backgroundColor=b6e3f4,ffdfbf,ffd5dc`;
         }
 
@@ -400,7 +421,7 @@
         // ==========================================
         // ⚠️ การตั้งค่า Google Sheets API
         // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbykpVeSnVYch_rkcQmfR-xW7MckBXP1JIe3LwqO7pUwhb1sjcvfQeubw4bCMnNbijP0/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPzxQS6O2EeU7VhH8WMJUVX-TKKaGI5r1jj_khY2_p9KoUl1hFM3_2Qna5w9I-rRvN/exec"; 
         
         const THAI_MONTHS = [
             { val: '01', label: 'มกราคม', short: 'ม.ค.' }, { val: '02', label: 'กุมภาพันธ์', short: 'ก.พ.' }, 
@@ -453,8 +474,15 @@
         };
 
         window.onload = async () => {
+            // ตั้งค่า Auto Logout Events
+            const evtTypes = ['mousemove', 'keydown', 'scroll', 'touchstart', 'click'];
+            evtTypes.forEach(evt => document.addEventListener(evt, resetInactivityTimer));
+            resetInactivityTimer();
+
             updateProfileUI(); 
             await fetchRecords();
+            await fetchUsers(); // ซิงก์ผู้ใช้จาก Database
+            
             document.getElementById('loader').classList.add('opacity-0', 'pointer-events-none');
             setTimeout(() => {
                 document.getElementById('loader').style.display = 'none';
@@ -485,6 +513,15 @@
             sidebar.classList.add('-translate-x-full');
             backdrop.classList.add('opacity-0', 'pointer-events-none');
             backdrop.classList.remove('opacity-100', 'pointer-events-auto');
+        }
+
+        function toggleDemoRole() {
+            if(currentUser.role === 'admin') currentUser = usersList[1] || { id: 'u2', username: 'demo_user', role: 'user', email: '' };
+            else currentUser = usersList[0] || { id: 'u1', username: 'admin', role: 'admin', email: '' };
+            
+            updateProfileUI();
+            if(currentUser.role !== 'admin' && (activeTab === 'scanner' || activeTab === 'users')) changeTab('dashboard');
+            else renderApp(); 
         }
 
         function updateProfileUI() {
@@ -607,6 +644,49 @@
             } catch (err) { 
                 console.error("Fetch Error:", err); 
                 records = [];
+            }
+        }
+
+        // ==========================================
+        // 🚀 FETCH USERS DYNAMICALLY
+        // ==========================================
+        async function fetchUsers() {
+            try {
+                if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) return; 
+                const fetchUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=getUsers';
+                const res = await fetch(fetchUrl);
+                const result = await res.json();
+                
+                if (result && result.status === 'success' && Array.isArray(result.data)) {
+                    usersList = result.data.map((u, i) => ({
+                        id: 'u' + (i + 1), 
+                        username: u.username,
+                        role: u.role,
+                        status: u.status,
+                        email: u.email || '',
+                        avatarStyle: u.avatarStyle || 'adventurer'
+                    }));
+
+                    // Update UI if the logged-in user details changed externally
+                    const me = usersList.find(u => u.username === currentUser.username);
+                    if (me) {
+                        currentUser.avatarStyle = me.avatarStyle;
+                        currentUser.role = me.role;
+                        currentUser.email = me.email;
+                        
+                        const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
+                        if (savedInfo) {
+                            savedInfo.avatarStyle = me.avatarStyle;
+                            savedInfo.role = me.role;
+                            savedInfo.username = me.username;
+                            if (localStorage.getItem('user_info')) localStorage.setItem('user_info', JSON.stringify(savedInfo));
+                            else sessionStorage.setItem('user_info', JSON.stringify(savedInfo));
+                        }
+                        updateProfileUI(); 
+                    }
+                }
+            } catch (err) { 
+                console.error("Fetch Users Error:", err); 
             }
         }
 
@@ -1657,7 +1737,7 @@
                         <p class="text-sm font-extrabold text-stone-700 leading-none">${currentUser.username}</p>
                         <p class="text-[10px] font-bold text-pink-500 uppercase mt-0.5">${currentUser.role === 'admin' ? 'แอดมิน' : 'ผู้ใช้งาน'}</p>
                     </div>
-                    <img src="${avatarUrl}" class="w-10 h-10 rounded-full border-2 border-pink-100 shadow-sm object-cover">
+                    <img src="${avatarUrl}" class="w-10 h-10 rounded-full border-2 border-pink-100 shadow-sm object-cover" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'">
                 </div>
                 
                 <div class="text-center mb-10 print-break-before">
@@ -1812,6 +1892,48 @@
         }
 
         // ==========================================
+        // 🚀 FETCH USERS DYNAMICALLY (Sync across devices)
+        // ==========================================
+        async function fetchUsers() {
+            try {
+                if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) return; 
+                const fetchUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=getUsers';
+                const res = await fetch(fetchUrl);
+                const result = await res.json();
+                
+                if (result && result.status === 'success' && Array.isArray(result.data)) {
+                    usersList = result.data.map((u, i) => ({
+                        id: 'u' + (i + 1), 
+                        username: u.username,
+                        role: u.role,
+                        status: u.status,
+                        email: u.email || '',
+                        avatarStyle: u.avatarStyle || 'adventurer'
+                    }));
+
+                    const me = usersList.find(u => u.username === currentUser.username);
+                    if (me) {
+                        currentUser.avatarStyle = me.avatarStyle;
+                        currentUser.role = me.role;
+                        currentUser.email = me.email;
+                        
+                        const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
+                        if (savedInfo) {
+                            savedInfo.avatarStyle = me.avatarStyle;
+                            savedInfo.role = me.role;
+                            savedInfo.username = me.username;
+                            if (localStorage.getItem('user_info')) localStorage.setItem('user_info', JSON.stringify(savedInfo));
+                            else sessionStorage.setItem('user_info', JSON.stringify(savedInfo));
+                        }
+                        updateProfileUI(); 
+                    }
+                }
+            } catch (err) { 
+                console.error("Fetch Users Error:", err); 
+            }
+        }
+
+        // ==========================================
         // 5. USERS MANAGEMENT LOGIC
         // ==========================================
         function getUsersHTML() {
@@ -1825,7 +1947,6 @@
                         ? `<div class="cursor-pointer group hover:scale-105 transition-transform" onclick="openRoleModal('${u.id}', '${u.role}', '${u.username}')" title="คลิกเพื่อเปลี่ยนบทบาท">${roleBadge}</div>`
                         : roleBadge;
 
-                    // เพิ่มปุ่มดินสอแก้ไขชื่อผู้ใช้งาน (เฉพาะ Admin)
                     const usernameDisplay = `
                         <div class="flex items-center gap-2">
                             <span class="font-extrabold text-stone-700 text-lg">${u.username}</span>
@@ -1882,7 +2003,7 @@
 
                 <div class="flex gap-3">
                     <button onclick="closeModal()" class="flex-1 bg-stone-100 text-stone-600 font-extrabold py-3.5 rounded-2xl hover:bg-stone-200 active:scale-95 transition-all">ยกเลิก</button>
-                    <button onclick="saveUserDetails('${userId}', '${targetUser.username}')" class="flex-1 bg-sky-500 text-white font-extrabold py-3.5 rounded-2xl hover:bg-sky-600 active:scale-95 transition-all shadow-lg shadow-sky-200">บันทึก</button>
+                    <button id="btn-save-userdetails" onclick="saveUserDetails('${userId}', '${targetUser.username}')" class="flex-1 bg-sky-500 text-white font-extrabold py-3.5 rounded-2xl hover:bg-sky-600 active:scale-95 transition-all shadow-lg shadow-sky-200"><span id="btn-save-userdetails-text">บันทึก</span></button>
                 </div>
             </div>`;
             lucide.createIcons();
@@ -1898,6 +2019,11 @@
                 return showCustomAlert('ชื่อผู้ใช้นี้มีในระบบแล้วครับ', 'error');
             }
 
+            const btn = document.getElementById('btn-save-userdetails');
+            const btnText = document.getElementById('btn-save-userdetails-text');
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
+            if (btnText) btnText.innerHTML = 'กำลังบันทึก...';
+
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
                     await fetch(GOOGLE_SCRIPT_URL, { 
@@ -1907,14 +2033,12 @@
                     });
                 }
                 
-                // Update Local UI
                 const userIndex = usersList.findIndex(u => u.id === userId);
                 if(userIndex > -1) {
                     usersList[userIndex].username = newUsername;
                     usersList[userIndex].password = newPassword;
                 }
 
-                // If editing self, update current session
                 if(currentUser.username === oldUsername) {
                     currentUser.username = newUsername;
                     const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
@@ -1931,6 +2055,8 @@
                 updateProfileUI();
             } catch(e) {
                 showCustomAlert('อัปเดตไม่สำเร็จ ลองใหม่อีกครั้งครับ', 'error');
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-70'); }
+                if (btnText) btnText.innerHTML = 'บันทึก';
             }
         }
 
@@ -1963,8 +2089,8 @@
 
                 <div class="flex flex-col sm:flex-row gap-4 pt-4">
                     <button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button>
-                    <button type="button" onclick="saveUserRole()" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
-                        <i data-lucide="check-circle-2" width="24"></i> บันทึกสิทธิ์
+                    <button type="button" id="btn-save-role" onclick="saveUserRole()" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
+                        <i data-lucide="check-circle-2" width="24"></i> <span id="btn-save-role-text">บันทึกสิทธิ์</span>
                     </button>
                 </div>
             </div>`;
@@ -1982,7 +2108,11 @@
             if(targetUserIndex === -1) return;
 
             const username = usersList[targetUserIndex].username;
-            usersList[targetUserIndex].role = selectedRole;
+            
+            const btn = document.getElementById('btn-save-role');
+            const btnText = document.getElementById('btn-save-role-text');
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
+            if (btnText) btnText.innerHTML = 'กำลังบันทึก...';
 
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
@@ -1992,11 +2122,14 @@
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
                 }
+                usersList[targetUserIndex].role = selectedRole;
                 showCustomAlert('เปลี่ยนบทบาทสำเร็จ! ✨', 'success');
                 closeModal();
                 renderApp(); 
             } catch(e) {
                 showCustomAlert('บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ', 'error');
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-70'); }
+                if (btnText) btnText.innerHTML = 'บันทึกสิทธิ์';
             }
         }
 
@@ -2048,8 +2181,8 @@
 
                 <div class="flex flex-col sm:flex-row gap-4">
                     <button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button>
-                    <button type="button" onclick="saveAvatarStyle()" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
-                        <i data-lucide="check-circle-2" width="24"></i> บันทึกรูปโปรไฟล์
+                    <button type="button" id="btn-save-avatar" onclick="saveAvatarStyle()" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
+                        <i data-lucide="check-circle-2" width="24"></i> <span id="btn-save-avatar-text">บันทึกรูปโปรไฟล์</span>
                     </button>
                 </div>
             </div>`;
@@ -2069,17 +2202,11 @@
             if(targetUserIndex === -1) return;
 
             const username = usersList[targetUserIndex].username;
-            usersList[targetUserIndex].avatarStyle = selectedAvatarStyle;
-
-            if (currentUser.username === username) {
-                currentUser.avatarStyle = selectedAvatarStyle;
-                const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
-                if(savedInfo) {
-                    savedInfo.avatarStyle = selectedAvatarStyle;
-                    if(localStorage.getItem('user_info')) localStorage.setItem('user_info', JSON.stringify(savedInfo));
-                    else sessionStorage.setItem('user_info', JSON.stringify(savedInfo));
-                }
-            }
+            
+            const btn = document.getElementById('btn-save-avatar');
+            const btnText = document.getElementById('btn-save-avatar-text');
+            if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
+            if (btnText) btnText.innerHTML = 'กำลังบันทึก...';
 
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
@@ -2089,12 +2216,27 @@
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
                 }
+                
+                usersList[targetUserIndex].avatarStyle = selectedAvatarStyle;
+
+                if (currentUser.username === username) {
+                    currentUser.avatarStyle = selectedAvatarStyle;
+                    const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
+                    if(savedInfo) {
+                        savedInfo.avatarStyle = selectedAvatarStyle;
+                        if(localStorage.getItem('user_info')) localStorage.setItem('user_info', JSON.stringify(savedInfo));
+                        else sessionStorage.setItem('user_info', JSON.stringify(savedInfo));
+                    }
+                }
+
                 showCustomAlert('บันทึกรูปอวตารสำเร็จแล้ว! ✨', 'success');
                 closeModal();
                 renderApp(); 
                 updateProfileUI(); 
             } catch(e) {
                 showCustomAlert('บันทึกไม่สำเร็จ ลองใหม่อีกครั้งนะครับ', 'error');
+                if (btn) { btn.disabled = false; btn.classList.remove('opacity-70'); }
+                if (btnText) btnText.innerHTML = 'บันทึกรูปโปรไฟล์';
             }
         }
         // ----------------------------------------------
