@@ -97,17 +97,6 @@
                     </div>
                 </div>
 
-                <!-- 🤖 Math CAPTCHA Protection -->
-                <div class="bg-orange-50/50 border border-orange-100 p-3 rounded-2xl relative animate-ios-up" style="animation-delay: 0.42s">
-                    <label class="text-xs font-bold text-orange-500 uppercase pl-1 flex items-center gap-1 mb-2">
-                        <i data-lucide="bot" width="14"></i> ยืนยันว่าไม่ใช่บอท
-                    </label>
-                    <div class="flex items-center gap-3">
-                        <span id="captcha-question" class="text-lg font-black text-stone-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-stone-100"></span>
-                        <input type="number" id="captcha-answer" required placeholder="?" class="w-20 p-2 text-center bg-white rounded-xl text-stone-700 font-black text-lg focus:ring-4 focus:ring-orange-100 outline-none border border-stone-100 focus:border-orange-300 shadow-inner">
-                    </div>
-                </div>
-
                 <div class="flex items-center justify-between px-2 animate-ios-up" style="animation-delay: 0.45s">
                     <label class="flex items-center gap-2 cursor-pointer group">
                         <div class="relative flex items-center justify-center">
@@ -139,23 +128,14 @@
         // ==========================================
         // ⚠️ ใส่ URL ของ Google Apps Script ของคุณที่นี่
         // ==========================================
-        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwPzxQS6O2EeU7VhH8WMJUVX-TKKaGI5r1jj_khY2_p9KoUl1hFM3_2Qna5w9I-rRvN/exec"; 
+        const GOOGLE_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbzsBn0I4kmtAOH7yrU_rWQbV4QTSokXEUqRRjBYVJ3WPitgV88eoUWxLi5LbljxLTo/exec"; 
 
         window.onload = () => {
             const token = localStorage.getItem('auth_token') || sessionStorage.getItem('auth_token');
             if (token) { window.location.href = 'index.html'; }
-            generateCaptcha(); // Initialize CAPTCHA
         };
 
         lucide.createIcons();
-
-        let currentCaptchaAnswer = 0;
-        function generateCaptcha() {
-            const num1 = Math.floor(Math.random() * 10) + 1;
-            const num2 = Math.floor(Math.random() * 10) + 1;
-            currentCaptchaAnswer = num1 + num2;
-            document.getElementById('captcha-question').innerText = `${num1} + ${num2} = `;
-        }
 
         function togglePassword() {
             const input = document.getElementById('password');
@@ -174,17 +154,8 @@
             
             const user = document.getElementById('username').value.trim();
             const pass = document.getElementById('password').value;
-            const captchaVal = parseInt(document.getElementById('captcha-answer').value);
 
             if(!user || !pass) return;
-
-            // ตรวจสอบ CAPTCHA ก่อน
-            if (captchaVal !== currentCaptchaAnswer) {
-                showError('บวกเลขผิดนะ! ยืนยัน CAPTCHA ใหม่อีกครั้ง', btn, btnText, errorBox);
-                generateCaptcha();
-                document.getElementById('captcha-answer').value = '';
-                return;
-            }
 
             btn.disabled = true;
             btn.classList.add('opacity-80', 'cursor-wait');
@@ -210,8 +181,6 @@
                     loginSuccess(result.token, result.user, rememberMe, btn, btnText);
                 } else {
                     showError(result.message, btn, btnText, errorBox);
-                    generateCaptcha(); // เปลี่ยนเลขใหม่เมื่อล็อกอินผิด
-                    document.getElementById('captcha-answer').value = '';
                 }
 
             } catch (err) {
@@ -261,7 +230,6 @@
                     localStorage.removeItem('mock_attempts');
                     localStorage.removeItem('mock_lockout');
                     mockAttempts = 0;
-                    // ปรับค่าจำลองให้ตรงกับที่ index.html ต้องการ
                     loginSuccess('mock_token_xyz123', { username: 'admin', role: 'admin', email: '' }, rememberMe, btn, btnText);
                 } else {
                     mockAttempts++;
@@ -274,8 +242,6 @@
                         showError('คุณกรอกรหัสผิดเกิน 3 ครั้ง บัญชีถูกล็อก 15 นาทีเพื่อความปลอดภัย', btn, btnText, errorBox);
                     } else {
                         showError(`ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง (เหลือโอกาส ${3 - mockAttempts} ครั้ง)`, btn, btnText, errorBox);
-                        generateCaptcha(); // สุ่มเลขใหม่
-                        document.getElementById('captcha-answer').value = '';
                     }
                 }
             }, 1000);
