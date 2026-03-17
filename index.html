@@ -109,7 +109,7 @@
     <!-- Desktop Floating User Profile -->
     <div class="hidden lg:flex fixed top-6 right-8 z-40 items-center gap-3 bg-white/90 backdrop-blur-xl px-2 pr-4 py-2 rounded-[2rem] shadow-sm border border-pink-100 animate-ios-up no-print">
         <div class="flex items-center gap-3 group cursor-pointer" onclick="toggleDemoRole()" title="โปรไฟล์ผู้ใช้ (คลิกเพื่อจำลองสลับ Role)">
-            <img id="profile-avatar" src="" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'" alt="Avatar" class="w-10 h-10 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover">
+            <img id="profile-avatar" src="https://api.dicebear.com/7.x/initials/svg?seed=User" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=NA'" alt="Avatar" class="w-10 h-10 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover">
             <div class="text-right">
                 <p id="profile-username" class="text-sm font-extrabold text-stone-700 leading-none group-hover:text-pink-500 transition-colors"></p>
                 <p id="profile-role" class="text-[10px] font-bold uppercase mt-0.5"></p>
@@ -135,7 +135,7 @@
                 </div>
             </div>
             <div class="flex items-center gap-3">
-                <img id="mobile-profile-avatar" src="" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'" class="w-9 h-9 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover" title="โปรไฟล์ผู้ใช้" onclick="toggleDemoRole()">
+                <img id="mobile-profile-avatar" src="https://api.dicebear.com/7.x/initials/svg?seed=User" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=NA'" class="w-9 h-9 rounded-full bg-pink-50 border-2 border-white shadow-sm object-cover" title="โปรไฟล์ผู้ใช้" onclick="toggleDemoRole()">
                 <button onclick="logout(event)" class="p-2 text-rose-500 bg-rose-50 border border-rose-100 rounded-xl active:scale-95 transition-all focus:outline-none" title="ออกจากระบบ">
                     <i data-lucide="log-out" width="20" height="20"></i>
                 </button>
@@ -334,7 +334,7 @@
         }
 
         // ==========================================
-        // 🎨 AVATAR HELPER 
+        // 🎨 AVATAR HELPER
         // ==========================================
         const AVATAR_STYLES = [
             'adventurer',
@@ -357,12 +357,12 @@
             let actualStyle = style;
             let actualSeed = encodeURIComponent((seed || '').trim());
             
-            if (style.startsWith('adventurer-v')) {
+            if (style && style.startsWith('adventurer-v')) {
                 actualStyle = 'adventurer';
                 actualSeed = encodeURIComponent((seed || '').trim() + '-' + style);
             }
             
-            return `https://api.dicebear.com/9.x/${actualStyle}/svg?seed=${actualSeed}&backgroundColor=b6e3f4,ffdfbf,ffd5dc`;
+            return `https://api.dicebear.com/7.x/${actualStyle}/svg?seed=${actualSeed}&backgroundColor=b6e3f4,ffdfbf,ffd5dc`;
         }
 
         // ==========================================
@@ -604,6 +604,9 @@
             if (typeof window[callbackName] === 'function') window[callbackName](value, label);
         }
 
+        // ==========================================
+        // 🚀 FETCH RECORDS (Data Healing Logic)
+        // ==========================================
         async function fetchRecords() {
             try {
                 if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
@@ -622,21 +625,32 @@
                 const result = await res.json();
                 
                 if (result && result.status === 'success' && Array.isArray(result.data)) {
-                    records = result.data.map(r => ({
-                        ...r, 
-                        waterType: r.waterType || 'flat',
-                        waterPrev: r.waterPrev || '',
-                        waterCurr: r.waterCurr || '',
-                        waterRate: r.waterRate || 15
-                    }));
-                } else if (Array.isArray(result)) {
-                    records = result.map(r => ({
-                        ...r, 
-                        waterType: r.waterType || 'flat',
-                        waterPrev: r.waterPrev || '',
-                        waterCurr: r.waterCurr || '',
-                        waterRate: r.waterRate || 15
-                    }));
+                    // Data Healing: ซ่อมแซมยอดรวมที่หายไปจากปัญหา Column Shift
+                    records = result.data.map(r => {
+                        let healed = { ...r };
+                        if (!healed.date || String(healed.date).trim() === '' || healed.date === 'undefined') {
+                            if (healed.waterCurr && String(healed.waterCurr).includes('-')) {
+                                healed.date = healed.waterCurr;
+                                healed.total = healed.waterPrev;
+                                healed.waterTotal = healed.waterType;
+                                healed.waterType = 'flat';
+                            }
+                        }
+                        
+                        const elecUnits = Number(healed.elecUnits) || (Number(healed.elecCurr) - Number(healed.elecPrev)) || 0;
+                        const elecTotal = Number(healed.elecTotal) || (elecUnits * Number(healed.elecRate)) || 0;
+                        const waterTotal = Number(healed.waterTotal) || 0;
+                        const total = Number(healed.total) || (elecTotal + waterTotal);
+
+                        return {
+                            ...healed, 
+                            elecUnits, elecTotal, waterTotal, total,
+                            waterType: healed.waterType || 'flat',
+                            waterPrev: healed.waterPrev || '',
+                            waterCurr: healed.waterCurr || '',
+                            waterRate: healed.waterRate || 15
+                        };
+                    });
                 } else {
                     records = [];
                     console.warn("Invalid data format received from API", result);
@@ -667,8 +681,8 @@
                         avatarStyle: u.avatarStyle || 'adventurer'
                     }));
 
-                    // Update UI if the logged-in user details changed externally
-                    const me = usersList.find(u => u.username === currentUser.username);
+                    // อัปเดตข้อมูล Session ถ้าผู้ใช้นี้ยังมีอยู่ในระบบ
+                    const me = usersList.find(u => String(u.username).toLowerCase() === String(currentUser.username).toLowerCase());
                     if (me) {
                         currentUser.avatarStyle = me.avatarStyle;
                         currentUser.role = me.role;
@@ -933,7 +947,7 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-5">
                     ${metricCard('ยอดรวมค่าใช้จ่าย', '฿' + m.totalAmount.toLocaleString(), m.pctChangeAmt, 'pink', 'banknote', 0.05)}
                     ${highestMonthHtml}
-                    ${metricCard('หน่วยไฟฟ้าที่ใช้ไป', m.totalUnits.toLocaleString() + ' <span class="text-sm md:text-lg text-stone-400 font-bold">หน่วย</span>', m.pctChangeUn, 'teal', 'zap', 0.15)}
+                    ${metricCard('ค่าไฟฟ้า (' + m.totalUnits.toLocaleString() + ' หน่วย)', '฿' + m.totalElec.toLocaleString(), m.pctChangeUn, 'teal', 'zap', 0.15)}
                     ${averageHtml}
                 </div>
 
@@ -1737,7 +1751,7 @@
                         <p class="text-sm font-extrabold text-stone-700 leading-none">${currentUser.username}</p>
                         <p class="text-[10px] font-bold text-pink-500 uppercase mt-0.5">${currentUser.role === 'admin' ? 'แอดมิน' : 'ผู้ใช้งาน'}</p>
                     </div>
-                    <img src="${avatarUrl}" class="w-10 h-10 rounded-full border-2 border-pink-100 shadow-sm object-cover" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'">
+                    <img src="${avatarUrl}" class="w-10 h-10 rounded-full border-2 border-pink-100 shadow-sm object-cover" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=NA'">
                 </div>
                 
                 <div class="text-center mb-10 print-break-before">
@@ -1892,48 +1906,6 @@
         }
 
         // ==========================================
-        // 🚀 FETCH USERS DYNAMICALLY (Sync across devices)
-        // ==========================================
-        async function fetchUsers() {
-            try {
-                if(GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) return; 
-                const fetchUrl = GOOGLE_SCRIPT_URL + (GOOGLE_SCRIPT_URL.includes('?') ? '&' : '?') + 'action=getUsers';
-                const res = await fetch(fetchUrl);
-                const result = await res.json();
-                
-                if (result && result.status === 'success' && Array.isArray(result.data)) {
-                    usersList = result.data.map((u, i) => ({
-                        id: 'u' + (i + 1), 
-                        username: u.username,
-                        role: u.role,
-                        status: u.status,
-                        email: u.email || '',
-                        avatarStyle: u.avatarStyle || 'adventurer'
-                    }));
-
-                    const me = usersList.find(u => u.username === currentUser.username);
-                    if (me) {
-                        currentUser.avatarStyle = me.avatarStyle;
-                        currentUser.role = me.role;
-                        currentUser.email = me.email;
-                        
-                        const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
-                        if (savedInfo) {
-                            savedInfo.avatarStyle = me.avatarStyle;
-                            savedInfo.role = me.role;
-                            savedInfo.username = me.username;
-                            if (localStorage.getItem('user_info')) localStorage.setItem('user_info', JSON.stringify(savedInfo));
-                            else sessionStorage.setItem('user_info', JSON.stringify(savedInfo));
-                        }
-                        updateProfileUI(); 
-                    }
-                }
-            } catch (err) { 
-                console.error("Fetch Users Error:", err); 
-            }
-        }
-
-        // ==========================================
         // 5. USERS MANAGEMENT LOGIC
         // ==========================================
         function getUsersHTML() {
@@ -1958,7 +1930,7 @@
                     <tr class="hover:bg-pink-50/30 transition-colors duration-300 group animate-ios-up" style="animation-delay: ${(i*0.05)+0.1}s">
                         <td class="p-5 flex items-center gap-4">
                             <div class="relative cursor-pointer group/avatar" onclick="openAvatarModal('${u.id}')" title="${currentUser.role === 'admin' ? 'คลิกเพื่อเปลี่ยนรูปอวตาร' : ''}">
-                                <img src="${getAvatarUrl(u.username, u.avatarStyle)}" class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover transition-transform group-hover/avatar:scale-105" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'">
+                                <img src="${getAvatarUrl(u.username, u.avatarStyle)}" class="w-12 h-12 rounded-full border-2 border-white shadow-sm object-cover transition-transform group-hover/avatar:scale-105" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=NA'">
                                 ${currentUser.role === 'admin' ? `<div class="absolute inset-0 bg-black/40 rounded-full flex items-center justify-center opacity-0 group-hover/avatar:opacity-100 transition-opacity"><i data-lucide="camera" width="16" class="text-white"></i></div>` : ''}
                             </div>
                             ${usernameDisplay}
@@ -2010,10 +1982,17 @@
         }
 
         async function saveUserDetails(userId, oldUsername) {
-            const newUsername = document.getElementById('edit-username-input').value.trim();
-            const newPassword = document.getElementById('edit-password-input').value.trim();
+            const newUsernameInput = document.getElementById('edit-username-input');
+            const newPasswordInput = document.getElementById('edit-password-input');
             
-            if(!newUsername || !newPassword) return showCustomAlert('กรุณากรอกชื่อและรหัสผ่านให้ครบถ้วนครับ', 'warning');
+            if (!newUsernameInput) return;
+            
+            const newUsername = newUsernameInput.value.trim();
+            const newPassword = newPasswordInput ? newPasswordInput.value.trim() : '';
+            
+            if(!newUsername) {
+                return showCustomAlert('กรุณากรอกชื่อผู้ใช้ด้วยครับ', 'warning');
+            }
             
             if(newUsername !== oldUsername && usersList.some(u => String(u.username).toLowerCase() === String(newUsername).toLowerCase())) {
                 return showCustomAlert('ชื่อผู้ใช้นี้มีในระบบแล้วครับ', 'error');
@@ -2021,25 +2000,39 @@
 
             const btn = document.getElementById('btn-save-userdetails');
             const btnText = document.getElementById('btn-save-userdetails-text');
+            
             if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
-            if (btnText) btnText.innerHTML = 'กำลังบันทึก...';
+            if (btnText) btnText.innerHTML = '<i data-lucide="loader-2" class="animate-spin inline-block" width="18"></i> กำลังบันทึก...';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
-                if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
-                    await fetch(GOOGLE_SCRIPT_URL, { 
+                if(typeof GOOGLE_SCRIPT_URL !== 'undefined' && !GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
+                    const response = await fetch(GOOGLE_SCRIPT_URL, { 
                         method: 'POST', 
-                        body: JSON.stringify({ action: 'updateUserCredentials', oldUsername: oldUsername, newUsername: newUsername, newPassword: newPassword }), 
+                        body: JSON.stringify({ 
+                            action: 'updateUserCredentials', 
+                            oldUsername: oldUsername, 
+                            newUsername: newUsername, 
+                            newPassword: newPassword 
+                        }), 
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
+                    
+                    const result = await response.json();
+                    if (result.status !== 'success') {
+                        throw new Error(result.message || 'อัปเดตข้อมูลไม่สำเร็จ');
+                    }
                 }
                 
                 const userIndex = usersList.findIndex(u => u.id === userId);
                 if(userIndex > -1) {
                     usersList[userIndex].username = newUsername;
-                    usersList[userIndex].password = newPassword;
+                    if (newPassword) {
+                        usersList[userIndex].password = newPassword;
+                    }
                 }
 
-                if(currentUser.username === oldUsername) {
+                if(typeof currentUser !== 'undefined' && currentUser.username === oldUsername) {
                     currentUser.username = newUsername;
                     const savedInfo = JSON.parse(localStorage.getItem('user_info') || sessionStorage.getItem('user_info'));
                     if(savedInfo) {
@@ -2051,10 +2044,10 @@
 
                 showCustomAlert('แก้ไขข้อมูลบัญชีสำเร็จ! ✨', 'success');
                 closeModal();
-                renderApp();
-                updateProfileUI();
+                if(typeof renderApp === 'function') renderApp();
+                if(typeof updateProfileUI === 'function') updateProfileUI();
             } catch(e) {
-                showCustomAlert('อัปเดตไม่สำเร็จ ลองใหม่อีกครั้งครับ', 'error');
+                showCustomAlert(e.message || 'อัปเดตไม่สำเร็จ ลองใหม่อีกครั้งครับ', 'error');
                 if (btn) { btn.disabled = false; btn.classList.remove('opacity-70'); }
                 if (btnText) btnText.innerHTML = 'บันทึก';
             }
@@ -2112,15 +2105,18 @@
             const btn = document.getElementById('btn-save-role');
             const btnText = document.getElementById('btn-save-role-text');
             if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
-            if (btnText) btnText.innerHTML = 'กำลังบันทึก...';
+            if (btnText) btnText.innerHTML = '<i data-lucide="loader-2" class="animate-spin inline-block" width="18"></i> กำลังบันทึก...';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
-                    await fetch(GOOGLE_SCRIPT_URL, { 
+                    const response = await fetch(GOOGLE_SCRIPT_URL, { 
                         method: 'POST', 
                         body: JSON.stringify({ action: 'updateRole', username: username, role: selectedRole }), 
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
+                    const result = await response.json();
+                    if(result.status !== 'success') throw new Error();
                 }
                 usersList[targetUserIndex].role = selectedRole;
                 showCustomAlert('เปลี่ยนบทบาทสำเร็จ! ✨', 'success');
@@ -2158,7 +2154,7 @@
                 return `
                 <div onclick="selectAvatarStyle('${style}', '${targetUser.username}')" class="cursor-pointer flex flex-col items-center gap-2 group p-2">
                     <div class="w-16 h-16 rounded-full border-4 ${isActive ? 'border-pink-400 scale-110 shadow-md shadow-pink-200' : 'border-transparent group-hover:scale-105 group-hover:border-pink-200'} transition-all duration-300 overflow-hidden bg-pink-50">
-                        <img src="${url}" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'" class="w-full h-full object-cover">
+                        <img src="${url}" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=NA'" class="w-full h-full object-cover">
                     </div>
                     <span class="text-[9px] sm:text-[10px] font-bold ${isActive ? 'text-pink-500' : 'text-stone-400'} uppercase tracking-wide text-center">${displayName}</span>
                 </div>`;
@@ -2167,7 +2163,7 @@
             content.innerHTML = `
             <div class="flex flex-col w-full max-w-2xl mx-auto pb-4">
                 <div class="flex justify-center items-center mb-6 relative">
-                    <img id="avatar-big-preview" src="${getAvatarUrl(targetUser.username, selectedAvatarStyle)}" onerror="this.src='https://api.dicebear.com/9.x/initials/svg?seed=NA'" class="w-32 h-32 rounded-full border-4 border-white shadow-xl bg-pink-50 object-cover animate-ios-pop">
+                    <img id="avatar-big-preview" src="${getAvatarUrl(targetUser.username, selectedAvatarStyle)}" onerror="this.src='https://api.dicebear.com/7.x/initials/svg?seed=NA'" class="w-32 h-32 rounded-full border-4 border-white shadow-xl bg-pink-50 object-cover animate-ios-pop">
                     <div class="absolute -bottom-2 bg-stone-800 text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">${targetUser.username}</div>
                 </div>
                 <h2 class="text-2xl font-black text-stone-800 mb-2 text-center">เลือกรูปอวตาร</h2>
@@ -2206,15 +2202,18 @@
             const btn = document.getElementById('btn-save-avatar');
             const btnText = document.getElementById('btn-save-avatar-text');
             if (btn) { btn.disabled = true; btn.classList.add('opacity-70'); }
-            if (btnText) btnText.innerHTML = 'กำลังบันทึก...';
+            if (btnText) btnText.innerHTML = '<i data-lucide="loader-2" class="animate-spin inline-block" width="18"></i> กำลังบันทึก...';
+            if (typeof lucide !== 'undefined') lucide.createIcons();
 
             try {
                 if(!GOOGLE_SCRIPT_URL.includes("YOUR_APP_SCRIPT_URL")) {
-                    await fetch(GOOGLE_SCRIPT_URL, { 
+                    const response = await fetch(GOOGLE_SCRIPT_URL, { 
                         method: 'POST', 
                         body: JSON.stringify({ action: 'updateAvatar', username: username, avatarStyle: selectedAvatarStyle }), 
                         headers: { 'Content-Type': 'text/plain;charset=utf-8' }
                     });
+                    const result = await response.json();
+                    if(result.status !== 'success') throw new Error();
                 }
                 
                 usersList[targetUserIndex].avatarStyle = selectedAvatarStyle;
@@ -2247,11 +2246,33 @@
             showModalWithAnim();
             const content = document.getElementById('modal-content');
             const roleOpts = [{value: 'user', label: 'ผู้ดูข้อมูล (ดูได้อย่างเดียว)'}, {value: 'admin', label: 'แอดมิน (จัดการได้ทุกอย่าง)'}];
-            const num1 = Math.floor(Math.random() * 10) + 1, num2 = Math.floor(Math.random() * 10) + 1;
-            currentCaptchaAnswer = num1 + num2;
 
             if(content) {
-                content.innerHTML = `<div class="flex flex-col w-full max-w-md mx-auto pb-4"><h2 class="text-3xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="user-plus" class="text-pink-500" width="28" height="28"></i> เพิ่มผู้ใช้งาน</h2><p class="text-stone-500 font-medium mb-6">กำหนดชื่อและบทบาทการเข้าถึงระบบ</p><form id="add-user-form" onsubmit="submitAddUser(event)" class="space-y-5"><div class="space-y-1.5 relative z-[60]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">ชื่อผู้ใช้งาน (Username)</label><input type="text" id="nu-username" required placeholder="เช่น user01" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-pink-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-pink-200 shadow-inner"></div><div class="space-y-1.5 relative z-[50]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">รหัสผ่าน (Password)</label><input type="password" id="nu-password" required placeholder="••••••••" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-pink-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-pink-200 shadow-inner"></div><div class="space-y-1.5 relative z-[40]"><label class="text-xs font-bold text-stone-400 uppercase pl-1">บทบาท (Role)</label>${createDropdownHTML('nu-role', roleOpts, 'user', 'updateNewUserRole', 'pink')}</div><div class="bg-orange-50/50 border border-orange-100 p-4 rounded-2xl relative z-[30]"><label class="text-xs font-bold text-orange-500 uppercase pl-1 flex items-center gap-1 mb-2"><i data-lucide="bot" width="14"></i> ยืนยันว่าไม่ใช่บอท</label><div class="flex items-center gap-3"><span class="text-xl font-black text-stone-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-stone-100">${num1} + ${num2} = </span><input type="number" id="nu-captcha" required placeholder="?" class="w-20 p-2 text-center bg-white rounded-xl text-stone-700 font-black text-xl focus:ring-4 focus:ring-orange-100 outline-none border border-stone-100 focus:border-orange-300 shadow-inner"></div></div><div class="flex flex-col sm:flex-row gap-4 pt-4"><button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button><button type="submit" id="btn-save-user" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2"><i data-lucide="check-circle-2" width="24"></i> <span id="btn-save-user-text">เพิ่มผู้ใช้</span></button></div></form></div>`;
+                content.innerHTML = `
+                <div class="flex flex-col w-full max-w-md mx-auto pb-4">
+                    <h2 class="text-3xl font-black text-stone-800 mb-2 flex items-center gap-3"><i data-lucide="user-plus" class="text-pink-500" width="28" height="28"></i> เพิ่มผู้ใช้งาน</h2>
+                    <p class="text-stone-500 font-medium mb-6">กำหนดชื่อและบทบาทการเข้าถึงระบบ</p>
+                    <form id="add-user-form" onsubmit="submitAddUser(event)" class="space-y-5">
+                        <div class="space-y-1.5 relative z-[60]">
+                            <label class="text-xs font-bold text-stone-400 uppercase pl-1">ชื่อผู้ใช้งาน (Username)</label>
+                            <input type="text" id="nu-username" required placeholder="เช่น user01" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-pink-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-pink-200 shadow-inner">
+                        </div>
+                        <div class="space-y-1.5 relative z-[50]">
+                            <label class="text-xs font-bold text-stone-400 uppercase pl-1">รหัสผ่าน (Password)</label>
+                            <input type="password" id="nu-password" required placeholder="••••••••" class="w-full p-4 bg-stone-50 rounded-2xl text-stone-700 font-bold focus:bg-white focus:ring-4 focus:ring-pink-100 outline-none transition-all duration-300 smooth-expo border border-transparent focus:border-pink-200 shadow-inner">
+                        </div>
+                        <div class="space-y-1.5 relative z-[40]">
+                            <label class="text-xs font-bold text-stone-400 uppercase pl-1">บทบาท (Role)</label>
+                            ${createDropdownHTML('nu-role', roleOpts, 'user', 'updateNewUserRole', 'pink')}
+                        </div>
+                        <div class="flex flex-col sm:flex-row gap-4 pt-4">
+                            <button type="button" onclick="closeModal()" class="w-full sm:flex-1 py-4 rounded-full font-bold text-stone-500 bg-stone-100 hover:bg-stone-200 active:scale-95 transition-all smooth-expo">ยกเลิก</button>
+                            <button type="submit" id="btn-save-user" class="w-full sm:flex-[2] bg-gradient-to-r from-pink-400 to-pink-500 text-white font-extrabold text-xl py-4 rounded-full shadow-lg shadow-pink-200 hover:shadow-xl hover:-translate-y-1 active:translate-y-0 active:scale-95 transition-all duration-300 smooth-expo flex justify-center items-center gap-2">
+                                <i data-lucide="check-circle-2" width="24"></i> <span id="btn-save-user-text">เพิ่มผู้ใช้</span>
+                            </button>
+                        </div>
+                    </form>
+                </div>`;
                 lucide.createIcons();
             }
         }
@@ -2260,9 +2281,7 @@
             e.preventDefault();
             const username = document.getElementById('nu-username').value;
             const password = document.getElementById('nu-password').value;
-            const captcha = parseInt(document.getElementById('nu-captcha').value);
 
-            if (captcha !== currentCaptchaAnswer) { showCustomAlert('บวกเลขผิดครับ ยืนยันว่าไม่ใช่บอทอีกครั้ง', 'error'); document.getElementById('nu-captcha').value = ''; return; }
             if (usersList.some(u => String(u.username).toLowerCase() === String(username).toLowerCase())) { showCustomAlert('ชื่อผู้ใช้งานนี้มีอยู่ในระบบแล้วครับ', 'warning'); return; }
 
             const btn = document.getElementById('btn-save-user');
